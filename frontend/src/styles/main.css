@@ -1,0 +1,69 @@
+/* Tailwind v4 entry — imports the engine once we adopt utilities. */
+@import 'tailwindcss';
+
+/* AstroStock theme tokens — mirror prototype/:root, persisted via theme store. */
+:root {
+  --bg: #0b0a1a;
+  --surface: #14122a;
+  --surface2: #1f1d3a;
+  --border: #2d2860;
+  --text: #e0daf5;
+  --text2: #9b97c0;
+  --text3: #6a6788;
+  --accent: #a78bfa;
+  --success: #34d399;
+  --warning: #fbbf24;
+  --danger: #f87171;
+
+  --planet-sun: #fde68a;
+  --planet-moon: #c7d2fe;
+  --planet-mercury: #93c5fd;
+  --planet-venus: #fda4af;
+  --planet-mars: #fb923c;
+  --planet-jupiter: #a78bfa;
+  --planet-saturn: #94a3b8;
+  --planet-uranus: #67e8f9;
+  --planet-neptune: #60a5fa;
+}
+
+[data-theme='dawn'] {
+  --bg: #faf5ff;
+  --surface: #ffffff;
+  --surface2: #f3e8ff;
+  --border: #ddd6fe;
+  --text: #1e1b4b;
+  --text2: #4c4a6e;
+  --text3: #7c7a9e;
+  --accent: #7c3aed;
+}
+
+[data-theme='ocean'] {
+  --bg: #0c1222;
+  --surface: #111d35;
+  --surface2: #1f3a6b;
+  --border: #2d4a8b;
+  --text: #dbeafe;
+  --text2: #a1c3f5;
+  --text3: #6a8bc0;
+  --accent: #60a5fa;
+}
+
+[data-theme='golden'] {
+  --bg: #1a1410;
+  --surface: #2a1f15;
+  --surface2: #3a271a;
+  --border: #5a4a35;
+  --text: #fef3c7;
+  --text2: #d1b88a;
+  --text3: #9a7a50;
+  --accent: #fbbf24;
+}
+
+body {
+  margin: 0;
+  font-family:
+    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica,
+    Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+}

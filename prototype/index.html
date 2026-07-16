@@ -1,0 +1,1708 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AstroStock · 占星股市预测系统</title>
+<style>
+/* ============================================================
+   CSS 变量 — 4 套主题
+   ============================================================ */
+:root {
+  --bg: #0b0a1a;
+  --bg-gradient: radial-gradient(ellipse at 20% 50%, #14122a 0%, #0b0a1a 70%);
+  --surface: #14122a;
+  --surface2: #1e1b3d;
+  --surface3: #2a2550;
+  --border: #2d2860;
+  --border-glow: rgba(167,139,250,0.15);
+  --text: #e0daf5;
+  --text2: #9990cc;
+  --text3: #6b6499;
+  --accent: #a78bfa;
+  --accent2: #7c3aed;
+  --accent-glow: rgba(167,139,250,0.3);
+  --success: #34d399;
+  --danger: #f87171;
+  --warning: #fbbf24;
+  --shadow: 0 4px 24px rgba(0,0,0,0.4);
+  --radius: 16px;
+  --radius-sm: 10px;
+  --transition: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+  --planet-sun: #fde68a;
+  --planet-moon: #c4b5fd;
+  --planet-mercury: #93c5fd;
+  --planet-venus: #a7f3d0;
+  --planet-mars: #fca5a5;
+  --planet-jupiter: #fde68a;
+  --planet-saturn: #d1d5db;
+  --planet-uranus: #60a5fa;
+  --planet-neptune: #818cf8;
+  --planet-pluto: #f472b6;
+}
+
+/* 主题：黎明之光 */
+[data-theme="dawn"] {
+  --bg: #faf5ff;
+  --bg-gradient: radial-gradient(ellipse at 20% 50%, #ede9fe 0%, #faf5ff 70%);
+  --surface: #ffffff;
+  --surface2: #f5f3ff;
+  --surface3: #ede9fe;
+  --border: #ddd6fe;
+  --border-glow: rgba(124,58,237,0.08);
+  --text: #1e1b4b;
+  --text2: #6d5e9a;
+  --text3: #9a8cc7;
+  --accent: #7c3aed;
+  --accent2: #6d28d9;
+  --accent-glow: rgba(124,58,237,0.2);
+  --shadow: 0 4px 24px rgba(124,58,237,0.08);
+  --success: #059669;
+  --danger: #dc2626;
+  --warning: #d97706;
+}
+
+/* 主题：深海午夜 */
+[data-theme="ocean"] {
+  --bg: #0c1222;
+  --bg-gradient: radial-gradient(ellipse at 20% 50%, #0f1a3a 0%, #0c1222 70%);
+  --surface: #111d35;
+  --surface2: #162545;
+  --surface3: #1d2f55;
+  --border: #1f3a6b;
+  --border-glow: rgba(96,165,250,0.15);
+  --text: #dbeafe;
+  --text2: #7da2d4;
+  --text3: #5a7faf;
+  --accent: #60a5fa;
+  --accent2: #2563eb;
+  --accent-glow: rgba(96,165,250,0.3);
+  --shadow: 0 4px 24px rgba(0,0,0,0.5);
+  --success: #34d399;
+  --danger: #f87171;
+  --warning: #fbbf24;
+}
+
+/* 主题：金色地平线 */
+[data-theme="golden"] {
+  --bg: #1a1410;
+  --bg-gradient: radial-gradient(ellipse at 20% 50%, #2a1f15 0%, #1a1410 70%);
+  --surface: #2a1f15;
+  --surface2: #3a2d1f;
+  --surface3: #4a3a28;
+  --border: #5a4a35;
+  --border-glow: rgba(251,191,36,0.12);
+  --text: #fef3c7;
+  --text2: #d4b87a;
+  --text3: #a08050;
+  --accent: #fbbf24;
+  --accent2: #d97706;
+  --accent-glow: rgba(251,191,36,0.25);
+  --shadow: 0 4px 24px rgba(0,0,0,0.5);
+  --success: #34d399;
+  --danger: #f87171;
+  --warning: #fbbf24;
+  --planet-sun: #fbbf24;
+  --planet-moon: #fde68a;
+  --planet-mercury: #fcd34d;
+  --planet-venus: #f59e0b;
+  --planet-mars: #ef4444;
+  --planet-jupiter: #fbbf24;
+  --planet-saturn: #d4b87a;
+  --planet-uranus: #60a5fa;
+  --planet-neptune: #818cf8;
+  --planet-pluto: #f472b6;
+}
+
+/* ============================================================
+   全局样式
+   ============================================================ */
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body {
+  font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  background: var(--bg-gradient);
+  color: var(--text);
+  min-height: 100vh;
+  transition: background var(--transition), color var(--transition);
+  overflow-x: hidden;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* ===== 星空粒子背景 ===== */
+#stars-canvas {
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+}
+
+/* ===== 滚动条 ===== */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+
+/* ===== 侧边栏 ===== */
+.sidebar {
+  position: fixed; left: 0; top: 0; bottom: 0;
+  width: 240px; background: var(--surface);
+  border-right: 1px solid var(--border);
+  padding: 24px 16px; z-index: 100;
+  display: flex; flex-direction: column;
+  transition: background var(--transition), border-color var(--transition);
+  backdrop-filter: blur(12px);
+}
+.sidebar .logo {
+  font-size: 22px; font-weight: 700;
+  background: linear-gradient(135deg, var(--accent), var(--planet-sun));
+  -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+  margin-bottom: 28px; display: flex; align-items: center; gap: 10px;
+}
+.sidebar .logo svg { -webkit-text-fill-color: initial; flex-shrink:0; }
+.sidebar nav { display: flex; flex-direction: column; gap: 2px; flex: 1; }
+.sidebar nav a {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 14px; border-radius: var(--radius-sm);
+  color: var(--text2); font-size: 14px; font-weight: 500;
+  transition: all 0.2s; cursor: pointer; position: relative;
+}
+.sidebar nav a:hover {
+  background: var(--surface2); color: var(--text); text-decoration: none;
+}
+.sidebar nav a.active {
+  background: var(--accent2); color: #fff; box-shadow: 0 0 20px var(--accent-glow);
+}
+.sidebar nav a .nav-badge {
+  margin-left: auto; font-size: 10px; padding: 1px 6px;
+  border-radius: 4px; background: rgba(251,191,36,0.2); color: var(--warning);
+}
+.sidebar .user-card {
+  margin-top: auto;
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px; border-radius: var(--radius-sm); background: var(--surface2);
+  cursor: pointer; transition: background 0.2s;
+}
+.sidebar .user-card:hover { background: var(--surface3); }
+.sidebar .user-card .avatar {
+  width: 36px; height: 36px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  display: flex; align-items: center; justify-content: center;
+  font-size: 14px; font-weight: 700; flex-shrink: 0;
+}
+.sidebar .user-card .name { font-size: 13px; font-weight: 600; }
+.sidebar .user-card .sign { font-size: 11px; color: var(--text2); }
+
+/* ===== 主题切换按钮 ===== */
+.theme-switcher {
+  position: relative; margin-bottom: 12px;
+}
+.theme-switcher .theme-btn {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; border-radius: var(--radius-sm);
+  background: var(--surface2); border: 1px solid var(--border);
+  color: var(--text2); font-size: 13px; cursor: pointer;
+  width: 100%; transition: all 0.2s;
+}
+.theme-switcher .theme-btn:hover { background: var(--surface3); color: var(--text); }
+.theme-switcher .theme-preview {
+  display: flex; gap: 4px; margin-left: auto;
+}
+.theme-switcher .theme-preview span {
+  width: 12px; height: 12px; border-radius: 50%; display: inline-block;
+  border: 1px solid var(--border);
+}
+.theme-dropdown {
+  position: absolute; bottom: calc(100% + 4px); left: 0; right: 0;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 6px; display: none;
+  box-shadow: var(--shadow); z-index: 10;
+}
+.theme-dropdown.open { display: block; }
+.theme-option {
+  display: flex; align-items: center; gap: 10px;
+  padding: 8px 10px; border-radius: 6px; cursor: pointer;
+  font-size: 12px; color: var(--text2); transition: all 0.15s;
+}
+.theme-option:hover { background: var(--surface2); color: var(--text); }
+.theme-option.active { background: var(--surface3); color: var(--accent); }
+.theme-option .dot {
+  width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--border);
+  flex-shrink: 0;
+}
+
+/* ===== 主区域 ===== */
+.main {
+  margin-left: 240px; padding: 28px 36px; max-width: 1400px;
+  position: relative; z-index: 1;
+}
+
+/* ===== 页面切换动画 ===== */
+.tab-content {
+  display: none; opacity: 0; transform: translateY(12px);
+  transition: opacity 0.4s ease, transform 0.4s ease;
+}
+.tab-content.active {
+  display: block; animation: fadeSlideIn 0.4s ease forwards;
+}
+@keyframes fadeSlideIn {
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ===== 顶部栏 ===== */
+.topbar {
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: 28px; flex-wrap: wrap; gap: 12px;
+}
+.topbar h1 { font-size: 24px; font-weight: 700; }
+.topbar h1 .subtitle { font-weight:400; color:var(--text2); font-size:16px; }
+.topbar .date-badge {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 8px 18px; font-size: 13px;
+  display: flex; align-items: center; gap: 10px;
+  transition: background var(--transition), border-color var(--transition);
+  backdrop-filter: blur(8px);
+}
+.topbar .date-badge .moon-phase {
+  width: 22px; height: 22px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, var(--planet-moon) 40%, transparent 42%);
+  box-shadow: 0 0 8px rgba(196,181,253,0.2);
+  animation: moonGlow 3s ease-in-out infinite alternate;
+}
+@keyframes moonGlow {
+  from { box-shadow: 0 0 6px rgba(196,181,253,0.1); }
+  to { box-shadow: 0 0 14px rgba(196,181,253,0.3); }
+}
+.topbar .live-clock {
+  font-variant-numeric: tabular-nums;
+  transition: color 0.3s;
+}
+
+/* ===== 卡片 ===== */
+.card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px 24px;
+  transition: all var(--transition);
+  backdrop-filter: blur(4px);
+  position: relative; overflow: hidden;
+}
+.card::before {
+  content: ''; position: absolute; inset: 0;
+  background: linear-gradient(135deg, var(--border-glow), transparent 60%);
+  opacity: 0; transition: opacity 0.4s;
+  pointer-events: none;
+}
+.card:hover::before { opacity: 1; }
+.card:hover {
+  border-color: var(--accent); box-shadow: 0 8px 32px var(--border-glow);
+  transform: translateY(-1px);
+}
+.card-title {
+  font-size: 13px; font-weight: 600; color: var(--text2);
+  text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 16px;
+  display: flex; align-items: center; gap: 8px;
+}
+
+/* ===== Grid ===== */
+.grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; }
+.grid-4 { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 20px; }
+.grid-dashboard {
+  display: grid; grid-template-columns: 2fr 1fr; gap: 20px;
+}
+
+/* ===== 行星位置 ===== */
+.planet-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 4px; }
+.planet-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 10px 12px; border-radius: 8px;
+  transition: background 0.2s; cursor: default;
+}
+.planet-row:hover { background: var(--surface2); }
+.planet-row .planet { display: flex; align-items: center; gap: 10px; font-weight: 600; font-size: 14px; }
+.planet-row .planet .dot {
+  width: 10px; height: 10px; border-radius: 50%; display: inline-block;
+  box-shadow: 0 0 8px currentColor; transition: transform 0.3s;
+}
+.planet-row:hover .planet .dot { transform: scale(1.4); }
+.planet-row .sign-pos { color: var(--text2); font-size: 13px; }
+.planet-row .aspect {
+  font-size: 11px; padding: 2px 8px; border-radius: 6px;
+  white-space: nowrap;
+}
+
+/* ===== 股票列表 ===== */
+.stock-list .stock-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 12px 0; border-bottom: 1px solid var(--border); cursor: pointer;
+  transition: all 0.2s; border-radius: 0;
+}
+.stock-list .stock-row:hover {
+  background: var(--surface2); margin: 0 -8px; padding: 12px 8px;
+  border-radius: 8px; border-bottom-color: transparent;
+}
+.stock-list .stock-row:last-child { border-bottom: none; }
+.stock-list .stock-row:last-child:hover { border-bottom-color: transparent; }
+.stock-row .info { display: flex; align-items: center; gap: 12px; }
+.stock-row .info .ticker {
+  font-weight: 700; font-size: 15px; min-width: 56px;
+}
+.stock-row .info .name { font-size: 12px; color: var(--text2); }
+.stock-row .price { text-align: right; }
+.stock-row .price .val { font-weight: 600; font-size: 15px; display: block; }
+.stock-row .price .change { font-size: 12px; }
+.stock-row .astro-score {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; padding: 4px 10px; border-radius: 8px;
+  font-weight: 600; transition: all 0.2s;
+}
+.stock-row:hover .astro-score { transform: scale(1.05); }
+
+/* ===== 展开详情 ===== */
+.stock-detail-expand {
+  display: none; padding: 16px; background: var(--surface2);
+  border-radius: 10px; margin: 8px 0;
+  border-left: 3px solid var(--accent);
+  transition: all 0.3s;
+}
+.stock-detail-expand.open { display: block; animation: fadeSlideIn 0.3s ease; }
+
+/* ===== 评分徽标 ===== */
+.score-high { background: rgba(52,211,153,0.15); color: var(--success); }
+.score-mid  { background: rgba(251,191,36,0.15); color: var(--warning); }
+.score-low  { background: rgba(248,113,113,0.15); color: var(--danger); }
+
+/* ===== 预测进度条 ===== */
+.prediction-bar {
+  height: 6px; border-radius: 3px; background: var(--surface2);
+  margin-top: 8px; overflow: hidden;
+}
+.prediction-bar .fill {
+  height: 100%; border-radius: 3px; transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+}
+.prediction-bar .fill::after {
+  content: ''; position: absolute; right: 0; top: 0; bottom: 0;
+  width: 20px; background: rgba(255,255,255,0.2);
+  filter: blur(4px);
+}
+.fill-bull { background: linear-gradient(90deg, var(--success), #059669); }
+.fill-bear { background: linear-gradient(90deg, var(--danger), #dc2626); }
+.fill-neutral { background: linear-gradient(90deg, var(--text3), var(--border)); }
+
+/* ===== 市场日历 ===== */
+.event-row {
+  display: flex; gap: 14px; padding: 12px 0; border-bottom: 1px solid var(--border);
+  align-items: center; transition: background 0.2s; border-radius: 6px;
+}
+.event-row:hover { background: var(--surface2); padding: 12px 8px; margin: 0 -8px; }
+.event-row:last-child { border-bottom: none; }
+.event-row .date-badge-sm {
+  min-width: 44px; text-align: center; font-size: 11px; color: var(--text2);
+}
+.event-row .date-badge-sm .day { font-size: 18px; font-weight: 700; color: var(--text); display: block; }
+.event-row .event-info { flex: 1; }
+.event-row .event-info .title { font-size: 14px; font-weight: 500; }
+.event-row .event-info .desc { font-size: 12px; color: var(--text2); }
+.event-row .impact {
+  font-size: 11px; padding: 3px 10px; border-radius: 6px; font-weight: 600;
+}
+
+/* ===== 盘面可视化 ===== */
+.chart-container {
+  display: flex; justify-content: center; align-items: center;
+  padding: 10px 0; position: relative;
+}
+
+/* ===== 关联项 ===== */
+.correlation-item {
+  display: flex; align-items: center; gap: 14px; padding: 14px 0;
+  border-bottom: 1px solid var(--border); transition: background 0.2s; border-radius: 6px;
+}
+.correlation-item:hover { background: var(--surface2); padding: 14px 8px; margin: 0 -8px; }
+.correlation-item:last-child { border-bottom: none; }
+.correlation-item .astrology { min-width: 120px; }
+.correlation-item .astrology .aspect-name { font-size: 13px; font-weight: 500; }
+.correlation-item .astrology .planet-pair { font-size: 11px; color: var(--text2); }
+.correlation-item .market-effect { flex: 1; }
+.correlation-item .market-effect .sector { font-size: 13px; }
+.correlation-item .market-effect .desc { font-size: 11px; color: var(--text2); }
+.correlation-item .confidence {
+  font-size: 12px; padding: 3px 10px; border-radius: 6px; font-weight: 600;
+}
+
+/* ===== 圆形评分 ===== */
+.score-ring {
+  position: relative; display: inline-flex; align-items: center; justify-content: center;
+}
+.score-ring svg { transform: rotate(-90deg); }
+.score-ring .score-value {
+  position: absolute; font-size: 28px; font-weight: 700;
+}
+
+/* ===== 元素平衡 ===== */
+.element-gauge { display: flex; gap: 10px; }
+.element-gauge .elem {
+  flex: 1; text-align: center; padding: 12px 8px;
+  border-radius: 10px; background: var(--surface2);
+  transition: all 0.3s; cursor: default;
+}
+.element-gauge .elem:hover { transform: translateY(-2px); }
+.element-gauge .elem .icon { font-size: 24px; display: block; margin-bottom: 4px; }
+.element-gauge .elem .label { font-size: 11px; color: var(--text2); }
+.element-gauge .elem .pct { font-size: 16px; font-weight: 700; }
+.element-gauge .elem-fire .pct { color: #f87171; }
+.element-gauge .elem-earth .pct { color: #34d399; }
+.element-gauge .elem-air .pct { color: #60a5fa; }
+.element-gauge .elem-water .pct { color: #818cf8; }
+.element-gauge .elem-bar {
+  height: 4px; border-radius: 2px; background: var(--border);
+  margin-top: 6px; overflow: hidden;
+}
+.element-gauge .elem-bar .fill {
+  height: 100%; transition: width 1s ease;
+}
+
+/* ===== 行星小时钟 ===== */
+.planetary-clock {
+  display: flex; align-items: center; gap: 12px;
+  padding: 8px 16px; border-radius: 10px;
+  background: var(--surface2); font-size: 13px;
+}
+.planetary-clock .current-hour {
+  font-size: 20px; font-weight: 700;
+}
+
+/* ===== 月亮相位 ===== */
+.moon-phase-visual { text-align: center; }
+.moon-phase-visual svg { display: inline-block; }
+
+/* ===== 提示浮层 ===== */
+.tooltip-trigger {
+  position: relative; cursor: help;
+  border-bottom: 1px dashed var(--text3);
+}
+.tooltip-trigger .tooltip {
+  position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+  background: var(--surface3); color: var(--text); font-size: 12px;
+  padding: 8px 12px; border-radius: 8px; white-space: nowrap;
+  border: 1px solid var(--border); box-shadow: var(--shadow);
+  opacity: 0; pointer-events: none; transition: all 0.2s; z-index: 20;
+}
+.tooltip-trigger:hover .tooltip { opacity: 1; }
+
+/* ===== 统计卡片 ===== */
+.stat-card {
+  transition: all 0.2s;
+}
+.stat-card:hover { transform: translateY(-2px); }
+
+/* ===== 工具类 ===== */
+.mt-8 { margin-top: 8px; }
+.mt-12 { margin-top: 12px; }
+.mt-16 { margin-top: 16px; }
+.mt-24 { margin-top: 24px; }
+.mb-8 { margin-bottom: 8px; }
+.mb-16 { margin-bottom: 16px; }
+.mb-24 { margin-bottom: 24px; }
+.flex { display: flex; }
+.flex-between { display: flex; justify-content: space-between; align-items: center; }
+.flex-center { display: flex; align-items: center; }
+.gap-4 { gap: 4px; }
+.gap-8 { gap: 8px; }
+.gap-12 { gap: 12px; }
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.text-accent { color: var(--accent); }
+.text-success { color: var(--success); }
+.text-danger { color: var(--danger); }
+.text-warning { color: var(--warning); }
+.text-sm { font-size: 12px; }
+.text-xs { font-size: 11px; }
+.text-muted { color: var(--text2); }
+.fw-600 { font-weight: 600; }
+.badge {
+  display: inline-block; padding: 2px 10px; border-radius: 6px;
+  font-size: 11px; font-weight: 600;
+}
+.badge-bull { background: rgba(52,211,153,0.15); color: var(--success); }
+.badge-bear { background: rgba(248,113,113,0.15); color: var(--danger); }
+.badge-neutral { background: rgba(153,144,204,0.15); color: var(--text2); }
+
+/* ===== 汉堡菜单按钮 ===== */
+.hamburger {
+  display: none; flex-direction: column; justify-content: center; gap: 5px;
+  width: 36px; height: 36px; border: 1px solid var(--border);
+  border-radius: 8px; background: var(--surface); cursor: pointer;
+  padding: 8px; transition: all 0.2s; flex-shrink: 0;
+}
+.hamburger:hover { background: var(--surface2); border-color: var(--accent); }
+.hamburger span {
+  display: block; height: 2px; border-radius: 2px;
+  background: var(--text2); transition: all 0.3s;
+}
+.hamburger.open span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.hamburger.open span:nth-child(2) { opacity: 0; }
+.hamburger.open span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+/* ===== 侧边栏遮罩（移动端） ===== */
+.sidebar-backdrop {
+  display: none; position: fixed; inset: 0;
+  background: rgba(0,0,0,0.5); z-index: 99;
+  opacity: 0; transition: opacity 0.3s;
+  pointer-events: none;
+}
+.sidebar-backdrop.open {
+  display: block; opacity: 1; pointer-events: auto;
+}
+
+/* ===== 响应式：超大桌面 (>1400px) ===== */
+@media (min-width: 1400px) {
+  .main { max-width: 1520px; }
+}
+
+/* ===== 响应式：桌面 (1200-1400px) ===== */
+@media (max-width: 1400px) {
+  .main { padding: 24px 28px; }
+  .grid-4 { grid-template-columns: repeat(3, 1fr); }
+}
+
+/* ===== 响应式：小桌面 (992-1200px) ===== */
+@media (max-width: 1200px) {
+  .grid-4 { grid-template-columns: repeat(2, 1fr); }
+  .grid-3 { grid-template-columns: repeat(2, 1fr); }
+  .planet-grid { grid-template-columns: repeat(2, 1fr); }
+  .main { padding: 20px 24px; }
+}
+
+/* ===== 响应式：平板 (768-992px) ===== */
+@media (max-width: 992px) {
+  .sidebar { width: 200px; padding: 20px 12px; }
+  .main { margin-left: 200px; padding: 20px; }
+  .grid-2, .grid-dashboard { grid-template-columns: 1fr; }
+  .grid-4 { grid-template-columns: repeat(2, 1fr); }
+  .grid-3 { grid-template-columns: repeat(2, 1fr); }
+  .topbar h1 { font-size: 20px; }
+  .topbar h1 .subtitle { font-size: 14px; }
+  .topbar .date-badge { padding: 6px 14px; font-size: 12px; }
+  .card { padding: 16px 18px; }
+  .score-ring .score-value { font-size: 22px; }
+  .planet-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+/* ===== 响应式：小平板 (576-768px) ===== */
+@media (max-width: 768px) {
+  .sidebar {
+    transform: translateX(-100%); width: 260px;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                background var(--transition), border-color var(--transition);
+    box-shadow: 4px 0 24px rgba(0,0,0,0.3);
+  }
+  .sidebar.open { transform: translateX(0); }
+  .sidebar-backdrop.open { display: block; opacity: 1; pointer-events: auto; }
+  .hamburger { display: flex; }
+  .main { margin-left: 0; padding: 16px; }
+  .grid-2, .grid-3, .grid-4, .grid-dashboard { grid-template-columns: 1fr; }
+  .planet-grid { grid-template-columns: repeat(2, 1fr); }
+  .topbar { margin-bottom: 20px; }
+  .topbar h1 { font-size: 18px; }
+  .topbar h1 .subtitle { display: none; }
+  .topbar .date-badge { padding: 6px 12px; font-size: 11px; }
+  .topbar .planetary-clock { padding: 6px 12px; font-size: 12px; }
+  .topbar .planetary-clock .current-hour { font-size: 16px; }
+  .card { padding: 14px 16px; }
+  .card-title { font-size: 12px; margin-bottom: 12px; }
+  .element-gauge { flex-wrap: wrap; }
+  .element-gauge .elem { min-width: calc(50% - 6px); }
+  .score-ring .score-value { font-size: 20px; }
+  .stock-row .info .ticker { font-size: 14px; min-width: 48px; }
+  .stock-row .price .val { font-size: 14px; }
+  .stock-row .astro-score { font-size: 11px; padding: 3px 8px; }
+}
+
+/* ===== 响应式：手机 (<576px) ===== */
+@media (max-width: 576px) {
+  .sidebar { width: 100%; max-width: 300px; }
+  .main { padding: 12px 10px; }
+  .grid-2, .grid-3, .grid-4, .grid-dashboard,
+  .planet-grid { grid-template-columns: 1fr; }
+  .topbar { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .topbar h1 { font-size: 16px; }
+  .topbar .date-badge { display: none; }
+  .topbar .planetary-clock { font-size: 11px; padding: 4px 10px; }
+  .topbar .planetary-clock .current-hour { font-size: 14px; }
+  .topbar h1 .subtitle { display: none; }
+  .card { padding: 12px; }
+  .card-title { font-size: 11px; margin-bottom: 10px; }
+  .element-gauge .elem { min-width: 100%; padding: 10px 8px; }
+  .element-gauge .elem .icon { font-size: 20px; }
+  .element-gauge .elem .pct { font-size: 14px; }
+  .stock-row { padding: 10px 0 !important; }
+  .stock-row .info .ticker { font-size: 13px; min-width: 40px; }
+  .stock-row .info .name { font-size: 11px; }
+  .stock-row .price .val { font-size: 13px; }
+  .stock-row .astro-score { font-size: 10px; padding: 2px 6px; }
+  .score-ring .score-value { font-size: 18px; }
+  .planet-row { padding: 8px 10px; font-size: 13px; }
+  .event-row { flex-wrap: wrap; gap: 8px; }
+  .event-row .date-badge-sm { min-width: 36px; }
+  .event-row .date-badge-sm .day { font-size: 16px; }
+  .correlation-item { flex-wrap: wrap; gap: 6px; }
+  .correlation-item .astrology { min-width: auto; }
+  .stock-detail-expand { padding: 12px; }
+  .badge { font-size: 10px; padding: 2px 8px; }
+  .moon-phase-visual { margin: 8px 0; }
+  .chart-container { overflow-x: auto; }
+}
+
+/* ===== 响应式：极小屏 (<400px) ===== */
+@media (max-width: 400px) {
+  .main { padding: 8px 6px; }
+  .topbar h1 { font-size: 14px; }
+  .topbar .planetary-clock { font-size: 10px; }
+  .card { padding: 10px; border-radius: 10px; }
+  .stock-row .info { gap: 8px; }
+  .stock-row .info .ticker { font-size: 12px; min-width: 34px; }
+  .hamburger { width: 32px; height: 32px; padding: 6px; gap: 4px; }
+  .sidebar { max-width: 280px; }
+  .sidebar .logo { font-size: 18px; margin-bottom: 20px; }
+  .sidebar nav a { padding: 8px 12px; font-size: 13px; }
+  .theme-switcher .theme-btn { padding: 8px 12px; font-size: 12px; }
+}
+</style>
+</head>
+<body>
+
+<!-- ===== 星空粒子背景 ===== -->
+<canvas id="stars-canvas"></canvas>
+
+<!-- ===== 侧边栏 ===== -->
+<aside class="sidebar" id="sidebar">
+  <!-- 遮罩层（移动端点击关闭） -->
+  <div class="sidebar-backdrop" id="sidebarBackdrop"></div>
+
+  <div class="logo">
+    <svg width="28" height="28" viewBox="0 0 28 28" fill="none">
+      <circle cx="14" cy="14" r="12" stroke="currentColor" stroke-width="1.5" opacity="0.4"/>
+      <circle cx="10" cy="10" r="4" fill="#fde68a" opacity="0.8"/>
+      <circle cx="18" cy="16" r="3" fill="#a78bfa" opacity="0.8"/>
+      <line x1="12" y1="11" x2="19" y2="18" stroke="#34d399" stroke-width="1.2" stroke-dasharray="2 2"/>
+    </svg>
+    <span>AstroStock</span>
+  </div>
+
+  <!-- 主题切换器 -->
+  <div class="theme-switcher">
+    <button class="theme-btn" id="themeBtn" title="切换主题">
+      <span>🎨</span>
+      <span>切换主题</span>
+      <span class="theme-preview">
+        <span style="background:#0b0a1a"></span>
+        <span style="background:#faf5ff"></span>
+        <span style="background:#0c1222"></span>
+        <span style="background:#1a1410"></span>
+      </span>
+    </button>
+    <div class="theme-dropdown" id="themeDropdown">
+      <div class="theme-option active" data-theme="dark">
+        <span class="dot" style="background:#0b0a1a;border-color:#7c3aed"></span>
+        🌌 深空暗夜
+      </div>
+      <div class="theme-option" data-theme="dawn">
+        <span class="dot" style="background:#faf5ff;border-color:#7c3aed"></span>
+        🌅 黎明之光
+      </div>
+      <div class="theme-option" data-theme="ocean">
+        <span class="dot" style="background:#0c1222;border-color:#2563eb"></span>
+        🌊 深海午夜
+      </div>
+      <div class="theme-option" data-theme="golden">
+        <span class="dot" style="background:#1a1410;border-color:#d97706"></span>
+        🌇 金色地平线
+      </div>
+    </div>
+  </div>
+
+  <nav>
+    <a class="active" data-page="dashboard" href="javascript:void(0)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="4" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="11" width="7" height="10" rx="1"/></svg>
+      <span>仪表盘</span>
+    </a>
+    <a data-page="stock-detail" href="javascript:void(0)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 6l-9.5 9.5-5-5L1 18"/><path d="M17 6h6v6"/></svg>
+      <span>股票详情</span>
+      <span class="nav-badge">⭐94</span>
+    </a>
+    <a data-page="birth-chart" href="javascript:void(0)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/></svg>
+      <span>我的星盘</span>
+    </a>
+    <a data-page="market-calendar" href="javascript:void(0)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>
+      <span>市场日历</span>
+    </a>
+    <a data-page="portfolio" href="javascript:void(0)">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 6H4a2 2 0 00-2 2v10a2 2 0 002 2h16a2 2 0 002-2V8a2 2 0 00-2-2z"/><path d="M16 10h4v4h-4z"/><circle cx="12" cy="14" r="2"/></svg>
+      <span>投资组合</span>
+    </a>
+  </nav>
+
+  <div class="user-card">
+    <div class="avatar">J</div>
+    <div>
+      <div class="name">Jason</div>
+      <div class="sign">♌ 狮子座 · 上升天蝎</div>
+    </div>
+  </div>
+</aside>
+
+<!-- ===== 主区域 ===== -->
+<div class="main">
+
+<!-- ============================================================
+     页面：仪表盘
+     ============================================================ -->
+<div id="page-dashboard" class="tab-content active">
+  <div class="topbar">
+    <button class="hamburger" id="hamburgerBtn" aria-label="切换菜单">
+      <span></span><span></span><span></span>
+    </button>
+    <h1>📊 仪表盘</h1>
+    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
+      <div class="planetary-clock">
+        <span>🕒 行星时</span>
+        <span class="current-hour" id="planetHour">☿ 水星时</span>
+        <span class="text-xs text-muted" id="clockDisplay">09:30 EST</span>
+      </div>
+      <div class="date-badge">
+        <span class="moon-phase"></span>
+        <span>2025-06-17 · 三月廿二 · <span id="moonPhaseLabel">亏凸月</span></span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 行星位置 + 元素平衡 -->
+  <div class="grid-2 mb-24">
+    <div class="card">
+      <div class="card-title">🌌 当前行星位置</div>
+      <div class="planet-grid" id="planetGrid">
+        <div class="planet-row">
+          <div class="planet"><span class="dot" style="background:var(--planet-sun);color:var(--planet-sun)"></span>☉ 太阳</div>
+          <span class="sign-pos">双子座 26°18'</span>
+          <span class="aspect badge-neutral">三分 · 木星</span>
+        </div>
+        <div class="planet-row">
+          <div class="planet"><span class="dot" style="background:var(--planet-moon);color:var(--planet-moon)"></span>☽ 月亮</div>
+          <span class="sign-pos">天秤座 08°42'</span>
+          <span class="aspect badge-neutral">对冲 · 火星</span>
+        </div>
+        <div class="planet-row">
+          <div class="planet"><span class="dot" style="background:var(--planet-mercury);color:var(--planet-mercury)"></span>☿ 水星</div>
+          <span class="sign-pos">巨蟹座 03°15'</span>
+          <span class="aspect badge-bull">六分 · 天王</span>
+        </div>
+        <div class="planet-row">
+          <div class="planet"><span class="dot" style="background:var(--planet-venus);color:var(--planet-venus)"></span>♀ 金星</div>
+          <span class="sign-pos">金牛座 19°50'</span>
+          <span class="aspect badge-neutral">合相 · 木星</span>
+        </div>
+        <div class="planet-row">
+          <div class="planet"><span class="dot" style="background:var(--planet-mars);color:var(--planet-mars)"></span>♂ 火星</div>
+          <span class="sign-pos">狮子座 12°07'</span>
+          <span class="aspect badge-bull">三分 · 太阳</span>
+        </div>
+        <div class="planet-row">
+          <div class="planet"><span class="dot" style="background:var(--planet-jupiter);color:var(--planet-jupiter)"></span>♃ 木星</div>
+          <span class="sign-pos">金牛座 20°33'</span>
+          <span class="aspect badge-bull">六分 · 海王</span>
+        </div>
+        <div class="planet-row">
+          <div class="planet"><span class="dot" style="background:var(--planet-saturn);color:var(--planet-saturn)"></span>♄ 土星</div>
+          <span class="sign-pos">双鱼座 14°22'</span>
+          <span class="aspect badge-neutral">四分 · 水星</span>
+        </div>
+        <div class="planet-row">
+          <div class="planet"><span class="dot" style="background:var(--planet-uranus);color:var(--planet-uranus)"></span>♅ 天王</div>
+          <span class="sign-pos">金牛座 22°48'</span>
+          <span class="aspect badge-bull">三分 · 金星</span>
+        </div>
+        <div class="planet-row">
+          <div class="planet"><span class="dot" style="background:var(--planet-neptune);color:var(--planet-neptune)"></span>♆ 海王</div>
+          <span class="sign-pos">双鱼座 25°11'</span>
+          <span class="aspect badge-neutral">对冲 · 月亮</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 元素平衡 + 月亮相位 -->
+    <div class="card">
+      <div class="card-title">🔥 元素能量平衡</div>
+      <div class="element-gauge mb-16" id="elementGauge">
+        <div class="elem elem-fire">
+          <span class="icon">🔥</span>
+          <span class="label">火象</span>
+          <span class="pct" data-target="38">0%</span>
+          <div class="elem-bar"><div class="fill" style="width:0%;background:#f87171;" data-target="38"></div></div>
+        </div>
+        <div class="elem elem-earth">
+          <span class="icon">🌍</span>
+          <span class="label">土象</span>
+          <span class="pct" data-target="42">0%</span>
+          <div class="elem-bar"><div class="fill" style="width:0%;background:#34d399;" data-target="42"></div></div>
+        </div>
+        <div class="elem elem-air">
+          <span class="icon">💨</span>
+          <span class="label">风象</span>
+          <span class="pct" data-target="12">0%</span>
+          <div class="elem-bar"><div class="fill" style="width:0%;background:#60a5fa;" data-target="12"></div></div>
+        </div>
+        <div class="elem elem-water">
+          <span class="icon">🌊</span>
+          <span class="label">水象</span>
+          <span class="pct" data-target="8">0%</span>
+          <div class="elem-bar"><div class="fill" style="width:0%;background:#818cf8;" data-target="8"></div></div>
+        </div>
+      </div>
+      <div class="flex-between mb-16">
+        <div class="card-title" style="margin-bottom:0;">🌙 月亮相位</div>
+        <span class="text-xs text-muted">亏凸月 ·  illumination 86%</span>
+      </div>
+      <div class="moon-phase-visual">
+        <svg width="120" height="60" viewBox="0 0 120 60">
+          <defs>
+            <clipPath id="moonClip">
+              <rect x="0" y="0" width="120" height="60"/>
+            </clipPath>
+          </defs>
+          <!-- 满月背景 -->
+          <circle cx="60" cy="30" r="28" fill="none" stroke="var(--border)" stroke-width="0.5"/>
+          <circle cx="60" cy="30" r="26" fill="var(--surface2)"/>
+          <!-- 阴影（亏凸月效果） -->
+          <ellipse cx="72" cy="30" rx="16" ry="26" fill="var(--bg)"/>
+          <!-- 光亮部分 -->
+          <circle cx="60" cy="30" r="26" fill="var(--planet-moon)" opacity="0.7"/>
+          <ellipse cx="72" cy="30" rx="16" ry="26" fill="var(--bg)"/>
+          <!-- 光晕 -->
+          <circle cx="60" cy="30" r="28" fill="none" stroke="var(--planet-moon)" stroke-width="1" opacity="0.3"/>
+        </svg>
+      </div>
+      <div class="flex-between text-xs text-muted mt-8">
+        <span>🌑 朔 6/11</span>
+        <span>🌕 望 6/25</span>
+        <span>🌗 下弦 7/2</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 占星关联图（相位轮） -->
+  <div class="card mb-24">
+    <div class="card-title">🔯 当前相位轮</div>
+    <div style="display:flex;align-items:center;justify-content:center;">
+      <svg width="340" height="340" viewBox="0 0 340 340" id="aspectWheel">
+        <circle cx="170" cy="170" r="150" fill="none" stroke="var(--border)" stroke-width="1"/>
+        <circle cx="170" cy="170" r="120" fill="none" stroke="var(--border)" stroke-width="0.5" stroke-dasharray="4 6"/>
+        <circle cx="170" cy="170" r="90" fill="none" stroke="var(--border)" stroke-width="0.5" stroke-dasharray="2 4"/>
+        <!-- 12 宫标记 -->
+        <g fill="var(--text3)" font-size="11" text-anchor="middle">
+          <text x="170" y="22">♈</text><text x="170" y="320">♎</text>
+          <text x="22" y="174">♋</text><text x="318" y="174">♑</text>
+          <text x="95" y="48">♉</text><text x="245" y="48">♐</text>
+          <text x="48" y="95">♊</text><text x="292" y="95">♏</text>
+          <text x="48" y="248">♌</text><text x="292" y="248">♒</text>
+          <text x="95" y="295">♍</text><text x="245" y="295">♓</text>
+        </g>
+        <!-- 相位连线 -->
+        <g stroke-width="1.5" opacity="0.6">
+          <line x1="170" y1="50" x2="230" y2="130" stroke="var(--success)" stroke-dasharray="6 3"/>
+          <line x1="170" y1="50" x2="140" y2="270" stroke="var(--warning)" stroke-width="1" stroke-dasharray="3 4"/>
+          <line x1="230" y1="130" x2="140" y2="270" stroke="var(--success)" stroke-dasharray="6 3"/>
+          <line x1="170" y1="50" x2="260" y2="200" stroke="var(--danger)" stroke-width="1" opacity="0.4"/>
+          <line x1="260" y1="200" x2="100" y2="220" stroke="var(--warning)" stroke-width="1" stroke-dasharray="3 4"/>
+          <line x1="100" y1="220" x2="140" y2="270" stroke="var(--text3)" stroke-width="0.8" stroke-dasharray="2 4"/>
+        </g>
+        <!-- 行星 -->
+        <g>
+          <circle cx="170" cy="50" r="14" fill="var(--planet-sun)" opacity="0.9"/><text x="170" y="54" text-anchor="middle" fill="#000" font-size="11" font-weight="700">☉</text>
+          <circle cx="140" cy="270" r="12" fill="var(--planet-moon)" opacity="0.9"/><text x="140" y="274" text-anchor="middle" fill="#000" font-size="10" font-weight="700">☽</text>
+          <circle cx="230" cy="130" r="10" fill="var(--planet-jupiter)" opacity="0.9"/><text x="230" y="134" text-anchor="middle" fill="#000" font-size="9" font-weight="700">♃</text>
+          <circle cx="260" cy="200" r="10" fill="var(--planet-mars)" opacity="0.9"/><text x="260" y="204" text-anchor="middle" fill="#000" font-size="9" font-weight="700">♂</text>
+          <circle cx="100" cy="220" r="10" fill="var(--planet-saturn)" opacity="0.9"/><text x="100" y="224" text-anchor="middle" fill="#000" font-size="9" font-weight="700">♄</text>
+          <circle cx="210" cy="80" r="9" fill="var(--planet-mercury)" opacity="0.9"/><text x="210" y="84" text-anchor="middle" fill="#000" font-size="8" font-weight="700">☿</text>
+          <circle cx="80" cy="130" r="9" fill="var(--planet-venus)" opacity="0.9"/><text x="80" y="134" text-anchor="middle" fill="#000" font-size="8" font-weight="700">♀</text>
+        </g>
+        <!-- 图例 -->
+        <g font-size="10" fill="var(--text2)">
+          <line x1="20" y1="300" x2="40" y2="300" stroke="var(--success)" stroke-width="2" stroke-dasharray="4 2"/>
+          <text x="44" y="304">三分/六分 (和谐)</text>
+          <line x1="20" y1="316" x2="40" y2="316" stroke="var(--danger)" stroke-width="1.5"/>
+          <text x="44" y="320">四分/对冲 (张力)</text>
+        </g>
+      </svg>
+    </div>
+  </div>
+
+  <!-- 今日预测 + 强势股票 -->
+  <div class="grid-2 mb-24">
+    <div class="card">
+      <div class="card-title">🔮 今日市场预测</div>
+      <div style="display:flex;align-items:center;gap:16px;flex-wrap:wrap;">
+        <div class="score-ring">
+          <svg width="64" height="64" viewBox="0 0 64 64">
+            <circle cx="32" cy="32" r="26" fill="none" stroke="var(--surface2)" stroke-width="6"/>
+            <circle cx="32" cy="32" r="26" fill="none" stroke="var(--success)" stroke-width="6"
+              stroke-dasharray="163" stroke-dashoffset="45" stroke-linecap="round"
+              style="transition: stroke-dashoffset 1.5s ease;"/>
+          </svg>
+          <span class="score-value" style="font-size:18px;color:var(--success);">72%</span>
+        </div>
+        <div>
+          <div style="font-size:20px;font-weight:700;color:var(--success);">📈 谨慎看涨</div>
+          <span class="badge badge-bull mt-8" style="display:inline-block;">置信度 72% · 偏多</span>
+        </div>
+      </div>
+      <p class="text-sm text-muted mt-16" style="line-height:1.8;">
+        太阳与木星呈三分相，带来乐观情绪。月亮在天秤座对冲火星，
+        暗示科技板块可能波动。水星六分天王星，利好通信和AI概念股。
+        整体趋势偏多，但需警惕盘中回调。
+      </p>
+      <div class="prediction-bar mt-16"><div class="fill fill-bull" style="width:72%" id="predictionBar"></div></div>
+      <div class="flex-between text-xs text-muted mt-8"><span>看空 28%</span><span>看多 72%</span></div>
+    </div>
+    <div class="card">
+      <div class="card-title">⭐ 今日强势股（占星评分）</div>
+      <div class="stock-list">
+        <div class="stock-row" data-ticker="NVDA" onclick="toggleStockDetail(this)">
+          <div class="info"><span class="ticker">NVDA</span><span class="name">英伟达</span></div>
+          <div><div class="astro-score score-high">⭐ 94 射手·木星</div></div>
+        </div>
+        <div class="stock-detail-expand" data-detail="NVDA">
+          <div class="flex-between"><span>行星匹配：<strong>木星三分太阳</strong></span><span class="text-success">+22pt</span></div>
+          <div class="flex-between mt-8"><span>过运触发：<strong>火星入狮子座</strong></span><span class="text-success">+18pt</span></div>
+          <div class="flex-between mt-8"><span>板块契合：<strong>AI/半导体</strong></span><span class="text-success">+15pt</span></div>
+          <div class="text-xs text-muted mt-8">点击关闭</div>
+        </div>
+        <div class="stock-row" data-ticker="TSLA" onclick="toggleStockDetail(this)">
+          <div class="info"><span class="ticker">TSLA</span><span class="name">特斯拉</span></div>
+          <div><div class="astro-score score-high">⭐ 88 火星·狮子</div></div>
+        </div>
+        <div class="stock-detail-expand" data-detail="TSLA">
+          <div class="flex-between"><span>行星匹配：<strong>火星三分太阳</strong></span><span class="text-success">+20pt</span></div>
+          <div class="flex-between mt-8"><span>过运触发：<strong>月亮入天蝎</strong></span><span class="text-warning">+12pt</span></div>
+          <div class="flex-between mt-8"><span>板块契合：<strong>电动车/能源</strong></span><span class="text-success">+14pt</span></div>
+          <div class="text-xs text-muted mt-8">点击关闭</div>
+        </div>
+        <div class="stock-row" data-ticker="PLTR" onclick="toggleStockDetail(this)">
+          <div class="info"><span class="ticker">PLTR</span><span class="name">Palantir</span></div>
+          <div><div class="astro-score score-mid">⭐ 76 天王·水瓶</div></div>
+        </div>
+        <div class="stock-detail-expand" data-detail="PLTR">
+          <div class="flex-between"><span>行星匹配：<strong>天王六分太阳</strong></span><span class="text-success">+16pt</span></div>
+          <div class="flex-between mt-8"><span>过运触发：<strong>水星六分天王</strong></span><span class="text-success">+14pt</span></div>
+          <div class="flex-between mt-8"><span>板块契合：<strong>大数据/AI</strong></span><span class="text-success">+13pt</span></div>
+          <div class="text-xs text-muted mt-8">点击关闭</div>
+        </div>
+        <div class="stock-row" data-ticker="AAPL" onclick="toggleStockDetail(this)">
+          <div class="info"><span class="ticker">AAPL</span><span class="name">苹果</span></div>
+          <div><div class="astro-score score-mid">⭐ 68 金星·金牛</div></div>
+        </div>
+        <div class="stock-detail-expand" data-detail="AAPL">
+          <div class="flex-between"><span>行星匹配：<strong>金星合木星</strong></span><span class="text-success">+14pt</span></div>
+          <div class="flex-between mt-8"><span>过运触发：<strong>金星六分海王</strong></span><span class="text-neutral">+8pt</span></div>
+          <div class="flex-between mt-8"><span>板块契合：<strong>消费电子</strong></span><span class="text-success">+12pt</span></div>
+          <div class="text-xs text-muted mt-8">点击关闭</div>
+        </div>
+        <div class="stock-row" data-ticker="AMD" onclick="toggleStockDetail(this)">
+          <div class="info"><span class="ticker">AMD</span><span class="name">超微半导体</span></div>
+          <div><div class="astro-score score-low">⭐ 55 土星·双鱼</div></div>
+        </div>
+        <div class="stock-detail-expand" data-detail="AMD">
+          <div class="flex-between"><span>行星匹配：<strong>土星四分水星</strong></span><span class="text-danger">-8pt</span></div>
+          <div class="flex-between mt-8"><span>过运触发：<strong>土星逆行</strong></span><span class="text-danger">-6pt</span></div>
+          <div class="flex-between mt-8"><span>板块契合：<strong>半导体</strong></span><span class="text-muted">+5pt</span></div>
+          <div class="text-xs text-muted mt-8">点击关闭</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 底部双卡片 -->
+  <div class="grid-2">
+    <div class="card">
+      <div class="flex-between mb-16">
+        <div class="card-title" style="margin-bottom:0;">📅 未来占星事件</div>
+        <span class="text-xs text-muted" style="cursor:pointer;" onclick="switchPage('market-calendar')">查看全部 →</span>
+      </div>
+      <div class="event-row">
+        <div class="date-badge-sm"><span class="day">19</span>周四</div>
+        <div class="event-info"><div class="title">☀️ 太阳进入巨蟹座</div><div class="desc">夏至 · 年度重要转折点</div></div>
+        <span class="impact badge-bull">🟢 布局</span>
+      </div>
+      <div class="event-row">
+        <div class="date-badge-sm"><span class="day">21</span>周六</div>
+        <div class="event-info"><div class="title">♀ 金星四分♄ 土星</div><div class="desc">消费板块承压</div></div>
+        <span class="impact badge-bear">🔴 规避</span>
+      </div>
+      <div class="event-row">
+        <div class="date-badge-sm"><span class="day">23</span>周一</div>
+        <div class="event-info"><div class="title">☿ 水星三分♆ 海王</div><div class="desc">科技创新类利好</div></div>
+        <span class="impact badge-bull">🟢 买入</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">🔄 占星-板块关联</div>
+      <div class="correlation-item">
+        <div class="astrology"><div class="aspect-name">♂ 三分 ☉</div><div class="planet-pair">火星·狮子 · 太阳·射手</div></div>
+        <div class="market-effect"><div class="sector">🏭 工业/国防</div><div class="desc">突破性上涨概率 +62%</div></div>
+        <span class="confidence badge-bull">强相关</span>
+      </div>
+      <div class="correlation-item">
+        <div class="astrology"><div class="aspect-name">♀ 六分 ♃</div><div class="planet-pair">金星·金牛 · 木星·金牛</div></div>
+        <div class="market-effect"><div class="sector">💰 金融/奢侈品</div><div class="desc">稳健增长周期</div></div>
+        <span class="confidence badge-bull">强相关</span>
+      </div>
+      <div class="correlation-item">
+        <div class="astrology"><div class="aspect-name">♄ 四分 ☿</div><div class="planet-pair">土星·双鱼 · 水星·双子</div></div>
+        <div class="market-effect"><div class="sector">📡 通信/媒体</div><div class="desc">信息延迟或政策干扰</div></div>
+        <span class="confidence badge-neutral">中等相关</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     页面：股票详情
+     ============================================================ -->
+<div id="page-stock-detail" class="tab-content">
+  <div class="topbar">
+    <h1><span class="subtitle">占星分析 / </span>NVDA <span class="text-sm text-muted" style="font-weight:400">· 英伟达</span></h1>
+    <div class="flex gap-8" style="align-items:center;">
+      <div class="score-ring" style="width:40px;height:40px;">
+        <svg width="40" height="40" viewBox="0 0 40 40">
+          <circle cx="20" cy="20" r="16" fill="none" stroke="var(--surface2)" stroke-width="4"/>
+          <circle cx="20" cy="20" r="16" fill="none" stroke="var(--success)" stroke-width="4"
+            stroke-dasharray="100" stroke-dashoffset="6" stroke-linecap="round"/>
+        </svg>
+        <span class="score-value" style="font-size:13px;color:var(--success);">94</span>
+      </div>
+      <span class="badge badge-bull">强烈买入</span>
+      <span class="text-sm text-muted">$132.47 <span class="text-success">+2.34%</span></span>
+    </div>
+  </div>
+
+  <div class="grid-2 mb-24">
+    <div class="card">
+      <div class="card-title">🔯 综合占星评分</div>
+      <div style="display:flex;align-items:center;gap:24px;flex-wrap:wrap;">
+        <div class="score-ring">
+          <svg width="96" height="96" viewBox="0 0 96 96">
+            <circle cx="48" cy="48" r="38" fill="none" stroke="var(--surface2)" stroke-width="6"/>
+            <circle cx="48" cy="48" r="38" fill="none" stroke="var(--success)" stroke-width="6"
+              stroke-dasharray="239" stroke-dashoffset="14" stroke-linecap="round"
+              style="transition: stroke-dashoffset 2s ease;"/>
+          </svg>
+          <span class="score-value" style="font-size:32px;color:var(--success);">94</span>
+        </div>
+        <div>
+          <div style="font-weight:600;font-size:16px;">强烈买入信号</div>
+          <div class="text-sm text-muted mt-8" style="line-height:1.8;">
+            🏹 射手座能量主导 + 木星三分太阳<br>
+            🔥 火星入狮子座与公司命盘相合<br>
+            📊 技术面与占星面共振
+          </div>
+          <div class="flex gap-8 mt-12">
+            <span class="badge badge-bull">行星 +38</span>
+            <span class="badge badge-bull">相位 +29</span>
+            <span class="badge badge-neutral">过运 +18</span>
+            <span class="badge badge-neutral">个人 +9</span>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">📈 7日预测趋势</div>
+      <div style="height:80px;display:flex;align-items:flex-end;gap:6px;padding-top:10px;">
+        <div style="flex:1;background:var(--surface2);border-radius:4px 4px 0 0;position:relative;">
+          <div class="fill fill-neutral" style="height:35%;width:100%;border-radius:4px 4px 0 0;transition:height 0.6s ease;"></div>
+          <span class="text-xs text-muted" style="position:absolute;top:-16px;left:50%;transform:translateX(-50%);">35%</span>
+        </div>
+        <div style="flex:1;background:var(--surface2);border-radius:4px 4px 0 0;position:relative;">
+          <div class="fill fill-neutral" style="height:30%;width:100%;border-radius:4px 4px 0 0;"></div>
+          <span class="text-xs text-muted" style="position:absolute;top:-16px;left:50%;transform:translateX(-50%);">30%</span>
+        </div>
+        <div style="flex:1;background:var(--surface2);border-radius:4px 4px 0 0;position:relative;">
+          <div class="fill fill-bull" style="height:65%;width:100%;border-radius:4px 4px 0 0;"></div>
+          <span class="text-xs text-muted" style="position:absolute;top:-16px;left:50%;transform:translateX(-50%);">65%</span>
+        </div>
+        <div style="flex:1;background:var(--surface2);border-radius:4px 4px 0 0;position:relative;">
+          <div class="fill fill-bull" style="height:82%;width:100%;border-radius:4px 4px 0 0;"></div>
+          <span class="text-xs text-muted" style="position:absolute;top:-16px;left:50%;transform:translateX(-50%);">82%</span>
+        </div>
+        <div style="flex:1;background:var(--surface2);border-radius:4px 4px 0 0;position:relative;">
+          <div class="fill fill-bull" style="height:78%;width:100%;border-radius:4px 4px 0 0;"></div>
+          <span class="text-xs text-muted" style="position:absolute;top:-16px;left:50%;transform:translateX(-50%);">78%</span>
+        </div>
+        <div style="flex:1;background:var(--surface2);border-radius:4px 4px 0 0;position:relative;">
+          <div class="fill fill-neutral" style="height:45%;width:100%;border-radius:4px 4px 0 0;"></div>
+          <span class="text-xs text-muted" style="position:absolute;top:-16px;left:50%;transform:translateX(-50%);">45%</span>
+        </div>
+        <div style="flex:1;background:var(--surface2);border-radius:4px 4px 0 0;position:relative;">
+          <div class="fill fill-bull" style="height:60%;width:100%;border-radius:4px 4px 0 0;"></div>
+          <span class="text-xs text-muted" style="position:absolute;top:-16px;left:50%;transform:translateX(-50%);">60%</span>
+        </div>
+      </div>
+      <div class="flex-between text-xs text-muted mt-12"><span>17日</span><span>18</span><span>19</span><span>20</span><span>21</span><span>22</span><span>23</span></div>
+    </div>
+  </div>
+
+  <div class="card mb-24">
+    <div class="card-title">🌠 行星过运对 NVDA 的影响</div>
+    <div class="grid-3" style="gap:8px;">
+      <div class="planet-row">
+        <div class="planet"><span class="dot" style="background:var(--planet-mars);color:var(--planet-mars)"></span>♂ 火星入狮子</div>
+        <span class="text-success text-sm">🔥 强烈利好</span>
+      </div>
+      <div class="planet-row">
+        <div class="planet"><span class="dot" style="background:var(--planet-sun);color:var(--planet-sun)"></span>☉ 太阳三分木星</div>
+        <span class="text-success text-sm">📈 增长信号</span>
+      </div>
+      <div class="planet-row">
+        <div class="planet"><span class="dot" style="background:var(--planet-saturn);color:var(--planet-saturn)"></span>♄ 土星四分水星</div>
+        <span class="text-warning text-sm">⚠️ 短期波动</span>
+      </div>
+      <div class="planet-row">
+        <div class="planet"><span class="dot" style="background:var(--planet-uranus);color:var(--planet-uranus)"></span>♅ 天王六分太阳</div>
+        <span class="text-success text-sm">💡 创新突破</span>
+      </div>
+      <div class="planet-row">
+        <div class="planet"><span class="dot" style="background:var(--planet-moon);color:var(--planet-moon)"></span>☽ 月亮入天蝎</div>
+        <span class="text-warning text-sm">📉 回调风险</span>
+      </div>
+      <div class="planet-row">
+        <div class="planet"><span class="dot" style="background:var(--planet-jupiter);color:var(--planet-jupiter)"></span>♃ 木星三分海王</div>
+        <span class="text-success text-sm">🎯 长期利好</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- 操作建议 -->
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">📋 操作建议</div>
+      <div style="padding:16px;background:var(--surface2);border-radius:12px;border-left:3px solid var(--success);">
+        <div style="font-weight:600;">✅ 现价买入 / 加仓</div>
+        <div class="text-sm text-muted mt-8">火星狮子能量在未来5个交易日持续强势，建议在132-135区间建仓。止损设在126（土星四分水星触发位）。</div>
+      </div>
+      <div style="padding:12px 0 0;display:flex;gap:12px;flex-wrap:wrap;" class="mt-16">
+        <span class="badge badge-bull">入场：$132-135</span>
+        <span class="badge badge-neutral">目标1：$142</span>
+        <span class="badge badge-neutral">目标2：$155</span>
+        <span class="badge badge-bear">止损：$126</span>
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">📊 历史预测准确率</div>
+      <div class="flex-between" style="padding:8px 0;"><span>最近7天</span><span class="text-success">86% ✅</span><div class="prediction-bar" style="flex:1;max-width:100px;margin:0;"><div class="fill fill-bull" style="width:86%"></div></div></div>
+      <div class="flex-between" style="padding:8px 0;"><span>最近30天</span><span class="text-success">79% ✅</span><div class="prediction-bar" style="flex:1;max-width:100px;margin:0;"><div class="fill fill-bull" style="width:79%"></div></div></div>
+      <div class="flex-between" style="padding:8px 0;"><span>最近90天</span><span class="text-success">74% ✅</span><div class="prediction-bar" style="flex:1;max-width:100px;margin:0;"><div class="fill fill-bull" style="width:74%"></div></div></div>
+      <div class="flex-between" style="padding:8px 0;border-bottom:none;"><span>总样本</span><span class="text-muted">1,284次预测</span><span class="text-muted text-sm">准确率滚动更新</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     页面：我的星盘
+     ============================================================ -->
+<div id="page-birth-chart" class="tab-content">
+  <div class="topbar">
+    <h1>♌ 我的星盘</h1>
+    <div class="date-badge"><span>1994-08-10 · 14:32 · 上海</span></div>
+  </div>
+
+  <div class="grid-2 mb-24">
+    <!-- 命盘图 -->
+    <div class="card" style="display:flex;flex-direction:column;align-items:center;">
+      <div class="card-title" style="align-self:flex-start;">🌟 本命盘</div>
+      <div class="chart-container">
+        <svg width="260" height="260" viewBox="0 0 260 260">
+          <defs>
+            <radialGradient id="chartGlow"><stop offset="0%" stop-color="var(--accent)" stop-opacity="0.06"/><stop offset="100%" stop-color="transparent"/></radialGradient>
+          </defs>
+          <circle cx="130" cy="130" r="128" fill="url(#chartGlow)"/>
+          <circle cx="130" cy="130" r="115" fill="none" stroke="var(--border)" stroke-width="1.5"/>
+          <circle cx="130" cy="130" r="90" fill="none" stroke="var(--border)" stroke-width="0.8" stroke-dasharray="4 5"/>
+          <circle cx="130" cy="130" r="65" fill="none" stroke="var(--border)" stroke-width="0.5" stroke-dasharray="2 4"/>
+          <!-- 宫位线 -->
+          <line x1="130" y1="15" x2="130" y2="245" stroke="var(--border)" stroke-width="0.5" opacity="0.3"/>
+          <line x1="15" y1="130" x2="245" y2="130" stroke="var(--border)" stroke-width="0.5" opacity="0.3"/>
+          <line x1="49" y1="49" x2="211" y2="211" stroke="var(--border)" stroke-width="0.5" opacity="0.3"/>
+          <line x1="211" y1="49" x2="49" y2="211" stroke="var(--border)" stroke-width="0.5" opacity="0.3"/>
+          <line x1="72" y1="28" x2="188" y2="232" stroke="var(--border)" stroke-width="0.3" opacity="0.2"/>
+          <line x1="188" y1="28" x2="72" y2="232" stroke="var(--border)" stroke-width="0.3" opacity="0.2"/>
+          <!-- 行星 -->
+          <circle cx="160" cy="55" r="10" fill="var(--planet-sun)" opacity="0.9"/><text x="160" y="46" text-anchor="middle" fill="#000" font-size="11" font-weight="700">☉</text>
+          <circle cx="75" cy="85" r="8" fill="var(--planet-moon)" opacity="0.9"/><text x="75" y="79" text-anchor="middle" fill="#000" font-size="9" font-weight="700">☽</text>
+          <circle cx="175" cy="150" r="7" fill="var(--planet-mars)" opacity="0.9"/><text x="175" y="145" text-anchor="middle" fill="#000" font-size="8" font-weight="700">♂</text>
+          <circle cx="100" cy="180" r="7" fill="var(--planet-venus)" opacity="0.9"/><text x="100" y="175" text-anchor="middle" fill="#000" font-size="8" font-weight="700">♀</circle>
+          <circle cx="195" cy="100" r="7" fill="var(--planet-jupiter)" opacity="0.9"/><text x="195" y="95" text-anchor="middle" fill="#000" font-size="8" font-weight="700">♃</text>
+          <circle cx="55" cy="155" r="7" fill="var(--planet-saturn)" opacity="0.9"/><text x="55" y="150" text-anchor="middle" fill="#000" font-size="8" font-weight="700">♄</text>
+          <circle cx="110" cy="60" r="6" fill="var(--planet-mercury)" opacity="0.9"/><text x="110" y="55" text-anchor="middle" fill="#000" font-size="7" font-weight="700">☿</text>
+          <circle cx="210" cy="180" r="6" fill="var(--planet-uranus)" opacity="0.9"/><text x="210" y="175" text-anchor="middle" fill="#000" font-size="7" font-weight="700">♅</text>
+          <circle cx="45" cy="95" r="6" fill="var(--planet-neptune)" opacity="0.9"/><text x="45" y="90" text-anchor="middle" fill="#000" font-size="7" font-weight="700">♆</text>
+          <!-- ASC / MC -->
+          <polygon points="130,15 126,25 134,25" fill="var(--accent)"/>
+          <text x="130" y="10" text-anchor="middle" fill="var(--accent)" font-size="11" font-weight="600">ASC</text>
+          <text x="248" y="134" text-anchor="start" fill="var(--accent)" font-size="11" font-weight="600">MC</text>
+          <!-- 星座符号 -->
+          <text x="130" y="250" text-anchor="middle" fill="var(--text2)" font-size="12">♌</text>
+          <text x="10" y="134" text-anchor="end" fill="var(--text2)" font-size="12">♒</text>
+          <text x="205" y="38" text-anchor="middle" fill="var(--text2)" font-size="11">♉</text>
+          <text x="38" y="220" text-anchor="middle" fill="var(--text2)" font-size="11">♏</text>
+        </svg>
+      </div>
+      <div class="text-sm text-muted text-center" style="max-width:300px;line-height:1.7;">
+        太阳狮子座 · 月亮水瓶座 · 上升天蝎座<br>
+        火元素主导 · 行动力强 · 适合风险投资
+      </div>
+    </div>
+    <!-- 行星落位表 -->
+    <div class="card">
+      <div class="card-title">📌 行星落位</div>
+      <table class="house-table" style="width:100%;border-collapse:collapse;font-size:13px;">
+        <tr><th style="text-align:left;padding:8px 6px;color:var(--text2);font-weight:500;border-bottom:1px solid var(--border);">行星</th><th style="text-align:left;padding:8px 6px;color:var(--text2);font-weight:500;border-bottom:1px solid var(--border);">星座</th><th style="text-align:left;padding:8px 6px;color:var(--text2);font-weight:500;border-bottom:1px solid var(--border);">宫位</th><th style="text-align:left;padding:8px 6px;color:var(--text2);font-weight:500;border-bottom:1px solid var(--border);">度数</th></tr>
+        <tr><td style="padding:8px 6px;border-bottom:1px solid var(--border);">☉ 太阳</td><td style="padding:8px 6px;border-bottom:1px solid var(--border);">♌ 狮子座</td><td style="padding:8px 6px;border-bottom:1px solid var(--border);">第5宫</td><td style="padding:8px 6px;border-bottom:1px solid var(--border);">17°42'</td></tr>
+        <tr><td style="padding:8px 6px;border-bottom:1px solid var(--border);">☽ 月亮</td><td style="padding:8px 6px;border-bottom:1px solid var(--border);">♒ 水瓶座</td><td style="padding:8px 6px;border-bottom:1px solid var(--border);">第11宫</td><td style="padding:8px 6px;border-bottom:1px solid var(--border);">08°15'</td></tr>
+        <tr><td style="padding:8px 6px;border-bottom:1px solid var(--border);">☿ 水星</td><td style="padding:8px 6px;border-bottom:1px solid var(--border);">♍ 处女座</td><td style="padding:8px 6px;border-bottom:1px solid var(--border);">第6宫</td><td style="padding:8px 6px;border-bottom:1px solid var(--border);">22°30'</td></tr>
+        <tr><td style="padding:8px 6px;border-bottom:1px solid var(--border);">♀ 金星</td><td style="padding:8px 6px;border-bottom:1px solid var(--border);">♋ 巨蟹座</td><td style="padding:8px 6px;border-bottom:1px solid var(--border);">第4宫</td><td style="padding:8px 6px;border-bottom:1px solid var(--border);">11°08'</td></tr>
+        <tr><td style="padding:8px 6px;border-bottom:1px solid var(--border);">♂ 火星</td><td style="padding:8px 6px;border-bottom:1px solid var(--border);">♐ 射手座</td><td style="padding:8px 6px;border-bottom:1px solid var(--border);">第9宫</td><td style="padding:8px 6px;border-bottom:1px solid var(--border);">05°54'</td></tr>
+        <tr><td style="padding:8px 6px;border-bottom:1px solid var(--border);">♃ 木星</td><td style="padding:8px 6px;border-bottom:1px solid var(--border);">♌ 狮子座</td><td style="padding:8px 6px;border-bottom:1px solid var(--border);">第5宫</td><td style="padding:8px 6px;border-bottom:1px solid var(--border);">28°36'</td></tr>
+        <tr><td style="padding:8px 6px;border-bottom:1px solid var(--border);">♄ 土星</td><td style="padding:8px 6px;border-bottom:1px solid var(--border);">♓ 双鱼座</td><td style="padding:8px 6px;border-bottom:1px solid var(--border);">第12宫</td><td style="padding:8px 6px;border-bottom:1px solid var(--border);">14°20'</td></tr>
+        <tr><td style="padding:8px 6px;border-bottom:1px solid var(--border);">♅ 天王</td><td style="padding:8px 6px;border-bottom:1px solid var(--border);">♑ 摩羯座</td><td style="padding:8px 6px;border-bottom:1px solid var(--border);">第10宫</td><td style="padding:8px 6px;border-bottom:1px solid var(--border);">19°44'</td></tr>
+        <tr><td style="padding:8px 6px;border-bottom:none;">♆ 海王</td><td style="padding:8px 6px;border-bottom:none;">♑ 摩羯座</td><td style="padding:8px 6px;border-bottom:none;">第10宫</td><td style="padding:8px 6px;border-bottom:none;">23°12'</td></tr>
+      </table>
+    </div>
+  </div>
+
+  <!-- 投资性格 + 过运 -->
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">🧠 投资性格分析</div>
+      <div style="display:flex;flex-wrap:wrap;gap:12px;">
+        <div style="background:var(--surface2);padding:12px 16px;border-radius:12px;flex:1;min-width:130px;">
+          <div class="text-xs text-muted">风险偏好</div>
+          <div style="font-size:20px;font-weight:700;color:var(--planet-mars);">高 ⚡</div>
+        </div>
+        <div style="background:var(--surface2);padding:12px 16px;border-radius:12px;flex:1;min-width:130px;">
+          <div class="text-xs text-muted">持仓周期</div>
+          <div style="font-size:20px;font-weight:700;color:var(--planet-jupiter);">中短线 🎯</div>
+        </div>
+        <div style="background:var(--surface2);padding:12px 16px;border-radius:12px;flex:1;min-width:130px;">
+          <div class="text-xs text-muted">适合板块</div>
+          <div style="font-size:20px;font-weight:700;color:var(--accent);">科技·AI 🚀</div>
+        </div>
+      </div>
+      <div class="text-sm text-muted mt-16" style="line-height:1.8;">
+        太阳狮子+木星狮子→ 强烈的自信和领导力，适合做趋势领投者。<br>
+        月亮水瓶→ 对新兴技术和非传统资产有独特洞察。<br>
+        上升天蝎→ 精准的时机把握能力。
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-title">🎯 当前过运影响</div>
+      <div class="correlation-item">
+        <div class="astrology"><div class="aspect-name">过运火星</div><div class="planet-pair">合相 · 本命太阳</div></div>
+        <div class="market-effect"><div class="sector">行动力爆棚</div><div class="desc">适合积极交易</div></div>
+        <span class="confidence badge-bull">🔥 至7/2</span>
+      </div>
+      <div class="correlation-item">
+        <div class="astrology"><div class="aspect-name">过运木星</div><div class="planet-pair">三分 · 本命太阳</div></div>
+        <div class="market-effect"><div class="sector">财运扩张</div><div class="desc">投资回报窗口</div></div>
+        <span class="confidence badge-bull">💰 全年</span>
+      </div>
+      <div class="correlation-item">
+        <div class="astrology"><div class="aspect-name">过运土星</div><div class="planet-pair">四分 · 本命月亮</div></div>
+        <div class="market-effect"><div class="sector">情绪压力</div><div class="desc">避免情绪化交易</div></div>
+        <span class="confidence badge-neutral">⚠️ 至8月</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     页面：市场日历
+     ============================================================ -->
+<div id="page-market-calendar" class="tab-content">
+  <div class="topbar">
+    <h1>📅 占星市场日历</h1>
+    <div class="date-badge"><span>2025年6月 · 双子座月</span></div>
+  </div>
+
+  <div class="card mb-24">
+    <div class="card-title">本周重要天象</div>
+    <div class="event-row">
+      <div class="date-badge-sm"><span class="day">17</span>周二</div>
+      <div class="event-info"><div class="title">🌙 月亮入天蝎座</div><div class="desc">市场情绪转向谨慎，加密货币和军工板块可能活跃</div></div>
+      <span class="impact badge-neutral">⚠️ 关注</span>
+    </div>
+    <div class="event-row">
+      <div class="date-badge-sm"><span class="day">19</span>周四</div>
+      <div class="event-info"><div class="title">☀️ 太阳入巨蟹座（夏至）</div><div class="desc">年度转折点，房地产、消费板块进入强势周期</div></div>
+      <span class="impact badge-bull">🟢 布局</span>
+    </div>
+    <div class="event-row">
+      <div class="date-badge-sm"><span class="day">20</span>周五</div>
+      <div class="event-info"><div class="title">♄ 土星逆行（双鱼座）</div><div class="desc">科技股可能面临回调，适合减仓观望</div></div>
+      <span class="impact badge-bear">🔴 减仓</span>
+    </div>
+    <div class="event-row">
+      <div class="date-badge-sm"><span class="day">23</span>周一</div>
+      <div class="event-info"><div class="title">☿ 水星三分♆ 海王</div><div class="desc">AI和元宇宙概念股利好</div></div>
+      <span class="impact badge-bull">🟢 买入</span>
+    </div>
+    <div class="event-row">
+      <div class="date-badge-sm"><span class="day">25</span>周三</div>
+      <div class="event-info"><div class="title">♀ 金星四分♄ 土星</div><div class="desc">消费零售板块疲软</div></div>
+      <span class="impact badge-bear">🔴 规避</span>
+    </div>
+  </div>
+
+  <div class="grid-2">
+    <div class="card">
+      <div class="card-title">📆 月度展望</div>
+      <div style="display:flex;flex-direction:column;gap:12px;">
+        <div class="flex-between"><span>上旬（1-10日）</span><span class="badge badge-bull">科技股领涨</span><div class="prediction-bar" style="flex:1;max-width:80px;margin:0 0 0 12px;"><div class="fill fill-bull" style="width:78%"></div></div></div>
+        <div class="flex-between"><span>中旬（11-20日）</span><span class="badge badge-neutral">区间震荡</span><div class="prediction-bar" style="flex:1;max-width:80px;margin:0 0 0 12px;"><div class="fill fill-neutral" style="width:50%"></div></div></div>
+        <div class="flex-between"><span>下旬（21-30日）</span><span class="badge badge-bear">回调风险</span><div class="prediction-bar" style="flex:1;max-width:80px;margin:0 0 0 12px;"><div class="fill fill-bear" style="width:35%"></div></div></div>
+      </div>
+      <div class="text-sm text-muted mt-16">土星在双鱼座逆行（6/20-11/15），整体市场波动加大。建议上半年获利了结，下半年转为防御策略。</div>
+    </div>
+    <div class="card">
+      <div class="card-title">📊 月度板块推荐</div>
+      <div class="flex-between" style="padding:8px 0;"><span>🤖 人工智能 / AI</span><span class="badge badge-bull">强烈推荐</span></div>
+      <div class="flex-between" style="padding:8px 0;"><span>💻 半导体</span><span class="badge badge-bull">推荐</span></div>
+      <div class="flex-between" style="padding:8px 0;"><span>🛡️ 军工 / 国防</span><span class="badge badge-neutral">中性</span></div>
+      <div class="flex-between" style="padding:8px 0;"><span>🛍️ 消费零售</span><span class="badge badge-bear">规避</span></div>
+      <div class="flex-between" style="padding:8px 0;border-bottom:none;"><span>🏠 房地产</span><span class="badge badge-neutral">观察（夏至后）</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================================================
+     页面：投资组合
+     ============================================================ -->
+<div id="page-portfolio" class="tab-content">
+  <div class="topbar">
+    <h1>💼 投资组合</h1>
+    <div class="date-badge">总市值 <strong style=\"color:var(--success);\">$286,450</strong> · 今日 +$4,230</div>
+  </div>
+
+  <div class="grid-4 mb-24">
+    <div class="card stat-card text-center">
+      <div class="text-xs text-muted">总收益</div>
+      <div style="font-size:24px;font-weight:700;color:var(--success);" class="countup" data-target="18.4">0%</div>
+      <div class="text-xs text-muted">年初至今</div>
+    </div>
+    <div class="card stat-card text-center">
+      <div class="text-xs text-muted">占星吻合度</div>
+      <div style="font-size:24px;font-weight:700;color:var(--accent);" class="countup" data-target="82">0%</div>
+      <div class="text-xs text-muted">基于127次交易</div>
+    </div>
+    <div class="card stat-card text-center">
+      <div class="text-xs text-muted">持仓数量</div>
+      <div style="font-size:24px;font-weight:700;">8</div>
+      <div class="text-xs text-muted">4只多头 · 4只空头</div>
+    </div>
+    <div class="card stat-card text-center">
+      <div class="text-xs text-muted">今日占星信号</div>
+      <div style="font-size:24px;font-weight:700;color:var(--success);">3买入</div>
+      <div class="text-xs text-muted">1卖出</div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📋 持仓列表</div>
+    <div class="stock-list">
+      <div class="stock-row" onclick="toggleStockDetail(this)">
+        <div class="info"><span class="ticker">NVDA</span><span class="name">英伟达 · 120股</span></div>
+        <div><div class="astro-score score-high">⭐ 94</div></div>
+        <div class="price"><span class="val" style="color:var(--success);">$15,896</span><span class="change" style="color:var(--success);">+12.3%</span></div>
+      </div>
+      <div class="stock-detail-expand" data-detail="NVDA">
+        <div class="flex-between"><span>入场价：$118.20</span><span>持仓占比：5.5%</span></div>
+        <div class="flex-between mt-8"><span>占星信号更新：<strong>保持持有</strong></span><span class="badge badge-bull">推荐</span></div>
+      </div>
+      <div class="stock-row" onclick="toggleStockDetail(this)">
+        <div class="info"><span class="ticker">TSLA</span><span class="name">特斯拉 · 85股</span></div>
+        <div><div class="astro-score score-high">⭐ 88</div></div>
+        <div class="price"><span class="val" style="color:var(--success);">$19,720</span><span class="change" style="color:var(--success);">+8.7%</span></div>
+      </div>
+      <div class="stock-detail-expand" data-detail="TSLA">
+        <div class="flex-between"><span>入场价：$225.50</span><span>持仓占比：6.9%</span></div>
+        <div class="flex-between mt-8"><span>占星信号更新：<strong>逢高减仓</strong></span><span class="badge badge-neutral">谨慎</span></div>
+      </div>
+      <div class="stock-row" onclick="toggleStockDetail(this)">
+        <div class="info"><span class="ticker">PLTR</span><span class="name">Palantir · 200股</span></div>
+        <div><div class="astro-score score-mid">⭐ 76</div></div>
+        <div class="price"><span class="val" style="color:var(--success);">$18,400</span><span class="change" style="color:var(--success);">+5.2%</span></div>
+      </div>
+      <div class="stock-detail-expand" data-detail="PLTR">
+        <div class="flex-between"><span>入场价：$87.30</span><span>持仓占比：6.4%</span></div>
+        <div class="flex-between mt-8"><span>占星信号更新：<strong>继续持有</strong></span><span class="badge badge-bull">推荐</span></div>
+      </div>
+      <div class="stock-row" onclick="toggleStockDetail(this)">
+        <div class="info"><span class="ticker">AMD</span><span class="name">超微半导体 · 150股</span></div>
+        <div><div class="astro-score score-low">⭐ 55</div></div>
+        <div class="price"><span class="val" style="color:var(--danger);">$8,250</span><span class="change" style="color:var(--danger);">-3.1%</span></div>
+      </div>
+      <div class="stock-detail-expand" data-detail="AMD">
+        <div class="flex-between"><span>入场价：$56.80</span><span>持仓占比：2.9%</span></div>
+        <div class="flex-between mt-8"><span>占星信号更新：<strong>建议止损</strong></span><span class="badge badge-bear">规避</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /main -->
+
+<!-- ============================================================
+     JavaScript
+     ============================================================ -->
+<script>
+/* ===== 页面切换（事件委托） ===== */
+function switchPage(page) {
+  document.querySelectorAll('.sidebar nav a, .sidebar nav button').forEach(function(a) { a.classList.remove('active'); });
+  var target = document.querySelector('.sidebar nav [data-page="'+page+'"]');
+  if (target) target.classList.add('active');
+  document.querySelectorAll('.tab-content').forEach(function(p) { p.classList.remove('active'); });
+  var pageEl = document.getElementById('page-'+page);
+  if (pageEl) pageEl.classList.add('active');
+}
+
+var navEl = document.querySelector('.sidebar nav');
+if (navEl) {
+  navEl.addEventListener('click', function(e) {
+    var item = e.target.closest('[data-page]');
+    if (item) {
+      e.preventDefault();
+      switchPage(item.dataset.page);
+    }
+  });
+}
+
+/* ===== 汉堡菜单：切换侧边栏 ===== */
+(function() {
+  var btn = document.getElementById('hamburgerBtn');
+  var sidebar = document.getElementById('sidebar');
+  var backdrop = document.getElementById('sidebarBackdrop');
+  if (!btn || !sidebar || !backdrop) return;
+  function closeSidebar() {
+    sidebar.classList.remove('open');
+    backdrop.classList.remove('open');
+    btn.classList.remove('open');
+    document.body.style.overflow = '';
+  }
+  function toggleSidebar() {
+    var isOpen = sidebar.classList.contains('open');
+    if (isOpen) { closeSidebar(); }
+    else {
+      sidebar.classList.add('open');
+      backdrop.classList.add('open');
+      btn.classList.add('open');
+      document.body.style.overflow = 'hidden';
+    }
+  }
+  btn.addEventListener('click', toggleSidebar);
+  backdrop.addEventListener('click', closeSidebar);
+  // 导航点击后自动关闭侧边栏
+  sidebar.querySelectorAll('nav a[data-page]').forEach(function(a) {
+    a.addEventListener('click', function() {
+      if (window.innerWidth <= 768) closeSidebar();
+    });
+  });
+  // 窗口缩放时自动关闭侧边栏
+  window.addEventListener('resize', function() {
+    if (window.innerWidth > 768 && sidebar.classList.contains('open')) {
+      closeSidebar();
+    }
+  });
+})();
+
+/* ===== 展开/折叠股票详情 ===== */
+function toggleStockDetail(el) {
+  var ticker = el.dataset.ticker;
+  if (!ticker) {
+    // 尝试从子元素 .ticker 读取
+    var tickerEl = el.querySelector('.ticker');
+    if (tickerEl) ticker = tickerEl.textContent.trim();
+  }
+  if (!ticker) return;
+  var detail = document.querySelector('.stock-detail-expand[data-detail="'+ticker+'"]');
+  if (!detail) return;
+  var isOpen = detail.classList.contains('open');
+  document.querySelectorAll('.stock-detail-expand.open').forEach(function(d) { d.classList.remove('open'); });
+  if (!isOpen) detail.classList.add('open');
+}
+
+/* ===== 主题切换 ===== */
+(function() {
+  var btn = document.getElementById('themeBtn');
+  var dd = document.getElementById('themeDropdown');
+  if (!btn || !dd) return;
+  btn.addEventListener('click', function() { dd.classList.toggle('open'); });
+  document.addEventListener('click', function(e) {
+    if (!btn.contains(e.target) && !dd.contains(e.target)) dd.classList.remove('open');
+  });
+  dd.addEventListener('click', function(e) {
+    var opt = e.target.closest('.theme-option');
+    if (!opt) return;
+    dd.querySelectorAll('.theme-option').forEach(function(o) { o.classList.remove('active'); });
+    opt.classList.add('active');
+    document.documentElement.setAttribute('data-theme', opt.dataset.theme);
+    dd.classList.remove('open');
+    try { localStorage.setItem('astro-theme', opt.dataset.theme); } catch(ex) {}
+  });
+  // 恢复上次主题
+  var saved;
+  try { saved = localStorage.getItem('astro-theme'); } catch(ex) {}
+  if (saved) {
+    document.documentElement.setAttribute('data-theme', saved);
+    var activeOpt = dd.querySelector('.theme-option[data-theme="'+saved+'"]');
+    if (activeOpt) activeOpt.classList.add('active');
+    dd.querySelectorAll('.theme-option').forEach(function(o) {
+      if (o.dataset.theme !== saved) o.classList.remove('active');
+    });
+  }
+})();
+
+/* ===== 星空粒子背景 ===== */
+(function() {
+  const canvas = document.getElementById('stars-canvas');
+  const ctx = canvas.getContext('2d');
+  let stars = [];
+  function resize() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+  }
+  resize();
+  window.addEventListener('resize', resize);
+  for (let i = 0; i < 160; i++) {
+    stars.push({
+      x: Math.random() * canvas.width,
+      y: Math.random() * canvas.height,
+      r: Math.random() * 1.6 + 0.3,
+      a: Math.random() * 0.8 + 0.2,
+      speed: Math.random() * 0.008 + 0.003,
+      phase: Math.random() * Math.PI * 2
+    });
+  }
+  function drawStars() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const t = Date.now() * 0.001;
+    // 只在深色主题显示星星
+    const theme = document.documentElement.getAttribute('data-theme') || 'dark';
+    if (theme === 'dawn') { requestAnimationFrame(drawStars); return; }
+    stars.forEach(s => {
+      const flicker = 0.5 + 0.5 * Math.sin(t * s.speed + s.phase);
+      ctx.beginPath();
+      ctx.arc(s.x, s.y, s.r, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,255,255,${s.a * flicker})`;
+      ctx.fill();
+    });
+    requestAnimationFrame(drawStars);
+  }
+  drawStars();
+  // 主题变化时重绘
+  const observer = new MutationObserver(() => {
+    const theme = document.documentElement.getAttribute('data-theme');
+    if (theme === 'dawn') { ctx.clearRect(0,0,canvas.width,canvas.height); }
+  });
+  observer.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+})();
+
+/* ===== 数字增长动画 ===== */
+(function() {
+  const els = document.querySelectorAll('.countup');
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const el = entry.target;
+        const target = parseFloat(el.dataset.target);
+        const duration = 1500;
+        const start = performance.now();
+        function update(now) {
+          const t = Math.min((now - start) / duration, 1);
+          const eased = 1 - Math.pow(1 - t, 3);
+          el.textContent = (target * eased).toFixed(target % 1 === 0 ? 0 : 1) + (target % 1 === 0 ? '%' : '%');
+          if (t < 1) requestAnimationFrame(update);
+        }
+        requestAnimationFrame(update);
+        observer.unobserve(el);
+      }
+    });
+  }, { threshold: 0.3 });
+  els.forEach(el => observer.observe(el));
+})();
+
+/* ===== 元素平衡动画 ===== */
+(function() {
+  const bars = document.querySelectorAll('#elementGauge .fill, #elementGauge .pct');
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.querySelectorAll('.fill').forEach(bar => {
+          bar.style.width = bar.dataset.target + '%';
+        });
+        entry.target.querySelectorAll('.pct').forEach(pct => {
+          const target = parseInt(pct.dataset.target);
+          let start = 0;
+          const dur = 1200;
+          const t0 = performance.now();
+          function up(now) {
+            const t = Math.min((now - t0) / dur, 1);
+            const eased = 1 - Math.pow(1 - t, 3);
+            pct.textContent = Math.round(target * eased) + '%';
+            if (t < 1) requestAnimationFrame(up);
+          }
+          requestAnimationFrame(up);
+        });
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.3 });
+  const eg = document.getElementById('elementGauge');
+  if (eg) observer.observe(eg);
+})();
+
+/* ===== 预测进度条动画 ===== */
+(function() {
+  document.querySelectorAll('.prediction-bar .fill').forEach(bar => {
+    const w = bar.style.width;
+    bar.style.width = '0%';
+    setTimeout(() => { bar.style.width = w; }, 300);
+  });
+})();
+
+/* ===== 实时时钟 ===== */
+(function() {
+  const clock = document.getElementById('clockDisplay');
+  const planetHour = document.getElementById('planetHour');
+  const planets = ['☉ 太阳','♀ 金星','☿ 水星','☽ 月亮','♄ 土星','♃ 木星','♂ 火星'];
+  function updateClock() {
+    const now = new Date();
+    const h = String(now.getHours()).padStart(2,'0');
+    const m = String(now.getMinutes()).padStart(2,'0');
+    clock.textContent = h + ':' + m + ' EST';
+    // 模拟行星时
+    const idx = Math.floor((now.getHours() * 60 + now.getMinutes()) / 103) % 7;
+    planetHour.textContent = planets[idx] + '时';
+  }
+  updateClock();
+  setInterval(updateClock, 10000);
+})();
+
+/* ===== 键盘快捷键 ===== */
+document.addEventListener('keydown', e => {
+  const pages = ['dashboard','stock-detail','birth-chart','market-calendar','portfolio'];
+  const n = parseInt(e.key);
+  if (n >= 1 && n <= 5) switchPage(pages[n-1]);
+});
+</script>
+
+</body>
+</html>
