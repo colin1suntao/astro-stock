@@ -187,3 +187,13 @@ class HeatmapOut(BaseModel):
     planets: list[str]  # col keys in order
     cells: list[HeatmapCell]
     computed_at: str
+
+
+class InterpretOut(BaseModel):
+    text: str
+    model: str
+    tokens: int | None = None
+    reasoning_tokens: int | None = None
+    topic: str
+    ticker: str | None = None
+    generated_at: str

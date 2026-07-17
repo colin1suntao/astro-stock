@@ -9,6 +9,9 @@ onMounted(() => theme.init())
 const positions = ref<PlanetPosition[]>([])
 const aspects = ref<Aspect[]>([])
 const moon = ref<MoonPhase | null>(null)
+const interpretation = ref<{ text: string; tokens: number | null } | null>(null)
+const interpLoading = ref(false)
+const interpError = ref('')
 const loading = ref(true)
 const error = ref('')
 
@@ -101,6 +104,15 @@ async function load() {
 }
 onMounted(load)
 
+async function loadInterpret() {
+  interpLoading.value = true; interpError.value = ''
+  try {
+    const d = await api.interpret('当前整体天象对科技板块的倾向')
+    interpretation.value = { text: d.text, tokens: d.tokens }
+  } catch (e) { interpError.value = (e as Error).message }
+  finally { interpLoading.value = false }
+}
+
 const zodiacSymbols = ['♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓']
 </script>
 
@@ -188,6 +200,18 @@ const zodiacSymbols = ['♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '
             </div>
           </div>
         </div>
+        <!-- AI 占星解读 -->
+        <div class="card ai-card">
+          <div class="card-title">✨ AI 占星解读</div>
+          <p v-if="interpLoading" class="muted">🔮 星象推演中…（推理模型需 ~10-30 秒）</p>
+          <p v-if="interpError" class="error">❌ {{ interpError }} <button @click="loadInterpret">重试</button></p>
+          <div v-if="interpretation && !interpLoading" class="interp-body">
+            <p class="interp-text">{{ interpretation.text }}</p>
+            <p class="interp-meta muted">LongCat-2.0 · {{ interpretation.tokens }} tokens · <button class="refresh" @click="loadInterpret">重新生成</button></p>
+          </div>
+          <button v-if="!interpretation && !interpLoading && !interpError" class="interp-trigger" @click="loadInterpret">✨ 生成今日天象解读</button>
+        </div>
+
       </div>
     </section>
   </div>
@@ -240,4 +264,11 @@ const zodiacSymbols = ['♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '
 @media (max-width: 768px) {
   .grid-2 { grid-template-columns: 1fr; }
 }
+.ai-card { grid-column: 1 / -1; }
+.interp-body { display: flex; flex-direction: column; gap: 12px; }
+.interp-text { line-height: 1.7; color: var(--text); }
+.interp-meta { font-size: 12px; }
+.interp-meta .refresh { background: none; border: none; color: var(--accent); cursor: pointer; font-size: 12px; padding: 0; }
+.interp-trigger { padding: 12px 24px; border: 1px solid var(--accent); border-radius: 8px; background: var(--surface2); color: var(--accent); cursor: pointer; font-size: 14px; }
+.interp-trigger:hover { background: var(--accent); color: #fff; }
 </style>

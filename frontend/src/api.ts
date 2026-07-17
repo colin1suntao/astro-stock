@@ -137,4 +137,8 @@ export const api = {
   sectorHeatmap: (when?: string) =>
     jget<{ sectors: string[]; planets: string[]; cells: Array<{ sector: string; sector_label: string; planet: string; planet_name: string; sign: string | null; sign_symbol: string | null; is_retrograde: boolean; strength: number }>; computed_at: string }>(
       '/api/sector-heatmap' + (when ? `?when=${when}` : '')),
+  // LLM interpret
+  interpret: (topic: string, ticker?: string) =>
+    jget<{ text: string; model: string; tokens: number | null; reasoning_tokens: number | null; topic: string; ticker: string | null; generated_at: string }>(
+      '/api/interpret?topic=' + encodeURIComponent(topic) + (ticker ? `&ticker=${ticker}` : '')),
 }

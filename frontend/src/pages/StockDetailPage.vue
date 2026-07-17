@@ -7,6 +7,9 @@ const props = defineProps<{ ticker: string }>()
 const score = ref<AstroScore | null>(null)
 const quote = ref<{ name: string; price: number; change_pct: number; sector_label: string | null } | null>(null)
 const pred = ref<{ bars: Array<{ day_offset: number; confidence: number }> } | null>(null)
+const interpretation = ref<{ text: string; tokens: number | null } | null>(null)
+const interpLoading = ref(false)
+const interpError = ref('')
 const loading = ref(true)
 const error = ref('')
 
@@ -39,6 +42,15 @@ async function load() {
   finally { loading.value = false }
 }
 onMounted(load)
+
+async function loadInterpret() {
+  interpLoading.value = true; interpError.value = ''
+  try {
+    const d = await api.interpret(`当前天象对 ${props.ticker} 的综合影响`, props.ticker)
+    interpretation.value = { text: d.text, tokens: d.tokens }
+  } catch (e) { interpError.value = (e as Error).message }
+  finally { interpLoading.value = false }
+}
 </script>
 
 <template>
@@ -84,6 +96,18 @@ onMounted(load)
         </div>
         <div class="bar-axis muted">今日 → +6日</div>
       </div>
+
+      <!-- AI 占星解读 -->
+      <div class="card ai-card">
+        <div class="card-title">✨ AI 占星解读</div>
+        <p v-if="interpLoading" class="muted">🔮 推演中…（推理模型 ~10-30 秒）</p>
+        <p v-if="interpError" class="error">❌ {{ interpError }} <button @click="loadInterpret">重试</button></p>
+        <div v-if="interpretation && !interpLoading" class="interp-body">
+          <p class="interp-text">{{ interpretation.text }}</p>
+          <p class="interp-meta muted">LongCat-2.0 · {{ interpretation.tokens }} tokens · <button class="refresh" @click="loadInterpret">重新生成</button></p>
+        </div>
+        <button v-if="!interpretation && !interpLoading && !interpError" class="interp-trigger" @click="loadInterpret">✨ 生成 {{ ticker }} 天象解读</button>
+      </div>
     </div>
   </section>
 </template>
@@ -110,4 +134,11 @@ onMounted(load)
 .bar-label { position: absolute; top: -16px; font-size: 10px; color: var(--text2); }
 .bar-axis { font-size: 12px; margin-top: 8px; text-align: center; }
 @media (max-width: 768px) { .grid-2 { grid-template-columns: 1fr; } }
+.ai-card { grid-column: 1 / -1; }
+.interp-body { display: flex; flex-direction: column; gap: 12px; }
+.interp-text { line-height: 1.7; color: var(--text); }
+.interp-meta { font-size: 12px; }
+.interp-meta .refresh { background: none; border: none; color: var(--accent); cursor: pointer; font-size: 12px; padding: 0; }
+.interp-trigger { padding: 12px 24px; border: 1px solid var(--accent); border-radius: 8px; background: var(--surface2); color: var(--accent); cursor: pointer; font-size: 14px; }
+.interp-trigger:hover { background: var(--accent); color: #fff; }
 </style>

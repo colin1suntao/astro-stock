@@ -17,6 +17,12 @@ class Settings(BaseSettings):
     jwt_algo: str = "HS256"
     jwt_expire_minutes: int = 60 * 24  # 1 day
 
+    # LLM (LongCat, OpenAI-compatible)
+    llm_base_url: str = "https://api.longcat.chat/openai/v1/chat/completions"
+    llm_api_key: str = "ak_2fC5bH7f63pz9Fo2aD5ce3lp57i8j"
+    llm_model: str = "LongCat-2.0"
+    llm_max_tokens: int = 1500  # reasoning models eat tokens; leave room for body
+
     # Swiss Ephemeris
     ephem_path: str = "./data/swisseph"
 
