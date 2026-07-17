@@ -32,6 +32,22 @@ def direction_of(score: float) -> dict:
     return {"direction": "bear", "label": "强烈看跌", "emoji": "🔻", "color": "danger"}
 
 
+# Friendly/detrimental signs per planet (MVP). Triple-valued so each planet
+# has both friendly (+1.0) and detrimental (-0.3) signs; other signs neutral (+0.4).
+# Module-level so heatmap.py can reuse without re-declaring.
+SIGN_FRIENDLINESS: dict[str, tuple[list[str], tuple[str, ...]]] = {
+    "sun": (["白羊座", "狮子座", "射手座"], ("天秤座", "水瓶座")),
+    "moon": (["金牛座", "巨蟹座", "双鱼座", "射手座"], ("摩羯座", "天蝎座")),
+    "mercury": (["双子座", "处女座"], ("射手座", "双鱼座")),
+    "venus": (["金牛座", "天秤座", "双鱼座"], ("白羊座", "天蝎座")),
+    "mars": (["白羊座", "天蝎座"], ("金牛座", "天秤座", "巨蟹座")),
+    "jupiter": (["射手座", "双鱼座", "巨蟹座"], ("双子座", "处女座", "摩羯座")),
+    "saturn": (["摩羯座", "水瓶座", "天秤座"], ("白羊座", "巨蟹座", "狮子座")),
+    "uranus": (["白羊座", "水瓶座", "射手座"], ("金牛座", "狮子座", "天蝎座")),
+    "neptune": (["双鱼座", "射手座", "巨蟹座"], ("处女座", "双子座")),
+}
+
+
 # --- component scorers (each returns 0..1 + breakdown detail) --------------
 
 def _planetary_score(ticker: str, positions: list[dict]) -> tuple[float, list[dict]]:
@@ -51,17 +67,7 @@ def _planetary_score(ticker: str, positions: list[dict]) -> tuple[float, list[di
 
     # Friendly/detrimental signs per planet (MVP). Triple-valued so each planet
     # has both friendly (+1.0) and detrimental (-0.3) signs; other signs neutral (+0.4).
-    _friendly = {
-        "sun": (["白羊座", "狮子座", "射手座"], ["天秤座", "水瓶座"]),
-        "moon": (["金牛座", "巨蟹座", "双鱼座", "射手座"], ["摩羯座", "天蝎座"]),
-        "mercury": (["双子座", "处女座"], ["射手座", "双鱼座"]),
-        "venus": (["金牛座", "天秤座", "双鱼座"], ["白羊座", "天蝎座"]),
-        "mars": (["白羊座", "天蝎座"], ["金牛座", "天秤座", "巨蟹座"]),
-        "jupiter": (["射手座", "双鱼座", "巨蟹座"], ["双子座", "处女座", "摩羯座"]),
-        "saturn": (["摩羯座", "水瓶座", "天秤座"], ["白羊座", "巨蟹座", "狮子座"]),
-        "uranus": (["白羊座", "水瓶座", "射手座"], ("金牛座", "狮子座", "天蝎座")),
-        "neptune": (["双鱼座", "射手座", "巨蟹座"], ("处女座", "双子座")),
-    }
+    # Module-level table SIGN_FRIENDLINESS reused by heatmap.py.
     _detrimental_pts = -0.3
     _neutral_pts = 0.4
     pos_by = {p["planet"]: p for p in positions}
@@ -72,7 +78,7 @@ def _planetary_score(ticker: str, positions: list[dict]) -> tuple[float, list[di
         pos = pos_by.get(pl)
         if not pos:
             continue
-        friendly, detrimental = _friendly.get(pl, ([], []))
+        friendly, detrimental = SIGN_FRIENDLINESS.get(pl, ([], []))
         if pos["sign"] in friendly:
             pts += 1.0
             breakdown.append({"planet": pl, "sign": pos["sign"], "match": "friendly", "pts": 1.0})

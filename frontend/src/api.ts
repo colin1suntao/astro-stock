@@ -133,4 +133,8 @@ export const api = {
   addHolding: (ticker: string, shares: number, entry_price: number, note?: string) =>
     jsend<Holding>('/api/portfolio', { method: 'POST', body: JSON.stringify({ ticker, shares, entry_price, note }), headers: { 'Content-Type': 'application/json' } }),
   deleteHolding: (id: string) => jsend<void>(`/api/portfolio/${id}`, { method: 'DELETE' }),
+  // heatmap
+  sectorHeatmap: (when?: string) =>
+    jget<{ sectors: string[]; planets: string[]; cells: Array<{ sector: string; sector_label: string; planet: string; planet_name: string; sign: string | null; sign_symbol: string | null; is_retrograde: boolean; strength: number }>; computed_at: string }>(
+      '/api/sector-heatmap' + (when ? `?when=${when}` : '')),
 }

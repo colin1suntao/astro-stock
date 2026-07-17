@@ -169,3 +169,21 @@ class BacktestOut(BaseModel):
     by_direction: dict[str, DirectionStat]
     sample_bars: list[BacktestBar]
     recommendations: list[WeightRec]
+
+
+class HeatmapCell(BaseModel):
+    sector: str
+    sector_label: str
+    planet: str
+    planet_name: str
+    sign: str | None
+    sign_symbol: str | None
+    is_retrograde: bool
+    strength: float  # 0-1 normalized influence intensity
+
+
+class HeatmapOut(BaseModel):
+    sectors: list[str]  # row keys in order
+    planets: list[str]  # col keys in order
+    cells: list[HeatmapCell]
+    computed_at: str

@@ -26,6 +26,11 @@ export const router = createRouter({
       component: () => import('@/pages/MarketCalendarPage.vue'),
     },
     {
+      path: '/heatmap',
+      name: 'heatmap',
+      component: () => import('@/pages/HeatmapPage.vue'),
+    },
+    {
       path: '/portfolio',
       name: 'portfolio',
       component: () => import('@/pages/PortfolioPage.vue'),
