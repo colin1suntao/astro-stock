@@ -32,6 +32,7 @@ class User(Base):
     )
 
     holdings: Mapped[list["Holding"]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    alerts: Mapped[list["Alert"]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
 
 class Holding(Base):
@@ -49,6 +50,25 @@ class Holding(Base):
     )
 
     user: Mapped["User"] = relationship(back_populates="holdings")
+
+
+class Alert(Base):
+    """Transit-triggered alert for a user."""
+    __tablename__ = "alerts"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    user_id: Mapped[str] = mapped_column(String(32), ForeignKey("users.id"), index=True)
+    triggered_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc)
+    )
+    transiting_planet: Mapped[str] = mapped_column(String(16))
+    natal_planet: Mapped[str] = mapped_column(String(16))
+    aspect_type: Mapped[str] = mapped_column(String(16))
+    orb: Mapped[float] = mapped_column(Float)
+    text: Mapped[str] = mapped_column(Text)
+    read: Mapped[bool] = mapped_column(default=False)
+
+    user: Mapped["User"] = relationship(back_populates="alerts")
 
 
 class PredictionRecord(Base):

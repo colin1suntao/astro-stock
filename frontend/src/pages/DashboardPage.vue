@@ -12,6 +12,7 @@ const moon = ref<MoonPhase | null>(null)
 const interpretation = ref<{ text: string; tokens: number | null } | null>(null)
 const interpLoading = ref(false)
 const interpError = ref('')
+const alerts = ref<Array<{ id: string; text: string; orb: number; aspect_type: string; read: boolean }>>([])
 const loading = ref(true)
 const error = ref('')
 
@@ -102,7 +103,7 @@ async function load() {
     loading.value = false
   }
 }
-onMounted(load)
+onMounted(() => { load(); loadAlerts() })
 
 async function loadInterpret() {
   interpLoading.value = true; interpError.value = ''
@@ -113,6 +114,15 @@ async function loadInterpret() {
   finally { interpLoading.value = false }
 }
 
+async function loadAlerts() {
+  try { alerts.value = await api.listAlerts(true) as any }
+  catch { alerts.value = [] } // 未登录静默跳过
+}
+async function dismissAlert(id: string) {
+  await api.markAlertRead(id)
+  alerts.value = alerts.value.filter(a => a.id !== id)
+}
+
 const zodiacSymbols = ['♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '♐', '♑', '♒', '♓']
 </script>
 
@@ -120,6 +130,16 @@ const zodiacSymbols = ['♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '
   <div class="theme-init" :data-theme="theme.current">
     <section>
       <h1>📊 仪表盘</h1>
+      <!-- 今日过运提醒 -->
+      <div v-if="alerts.length" class="alert-bar">
+        <span class="alert-icon">🔔 今日过运提醒（{{ alerts.length }}）</span>
+        <div class="alert-list">
+          <div v-for="a in alerts" :key="a.id" class="alert-chip" :class="{ warn: a.aspect_type === 'square' || a.aspect_type === 'opposition', good: a.aspect_type === 'trine' || a.aspect_type === 'sextile' }">
+            <span class="chip-text">{{ a.text }}</span>
+            <button class="chip-x" @click="dismissAlert(a.id)">×</button>
+          </div>
+        </div>
+      </div>
       <p v-if="loading" class="muted">加载中…</p>
       <p v-if="error" class="error">❌ {{ error }} <button @click="load">重试</button></p>
 
@@ -264,6 +284,15 @@ const zodiacSymbols = ['♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '
 @media (max-width: 768px) {
   .grid-2 { grid-template-columns: 1fr; }
 }
+.alert-bar { margin-bottom: 16px; padding: 12px 16px; border: 1px solid var(--accent); border-radius: 8px; background: var(--surface2); }
+.alert-icon { font-weight: 600; color: var(--accent); }
+.alert-list { display: flex; flex-direction: column; gap: 8px; margin-top: 10px; }
+.alert-chip { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 12px; border-radius: 6px; background: var(--surface); border: 1px solid var(--border); }
+.alert-chip.warn { border-color: var(--danger); }
+.alert-chip.good { border-color: var(--success); }
+.chip-text { font-size: 13px; line-height: 1.5; }
+.chip-x { background: none; border: none; color: var(--text2); cursor: pointer; font-size: 18px; padding: 0 4px; }
+.chip-x:hover { color: var(--danger); }
 .ai-card { grid-column: 1 / -1; }
 .interp-body { display: flex; flex-direction: column; gap: 12px; }
 .interp-text { line-height: 1.7; color: var(--text); }

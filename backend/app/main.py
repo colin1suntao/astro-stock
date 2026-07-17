@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
-from app.api import astronomy, auth, backtest, heatmap, health, llm, market, natal, portfolio, scoring
+from app.api import alerts, astronomy, auth, backtest, heatmap, health, llm, market, natal, portfolio, scoring
 from app.core.config import settings
 from app.db import init_db
 
@@ -29,6 +29,7 @@ app.include_router(portfolio.router)
 app.include_router(backtest.router)
 app.include_router(heatmap.router)
 app.include_router(llm.router)
+app.include_router(alerts.router)
 
 
 @app.get("/")

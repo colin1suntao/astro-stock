@@ -141,4 +141,10 @@ export const api = {
   interpret: (topic: string, ticker?: string) =>
     jget<{ text: string; model: string; tokens: number | null; reasoning_tokens: number | null; topic: string; ticker: string | null; generated_at: string }>(
       '/api/interpret?topic=' + encodeURIComponent(topic) + (ticker ? `&ticker=${ticker}` : '')),
+  // transit alerts
+  listAlerts: (unread?: boolean) =>
+    jsend<{ id: string; triggered_at: string; transiting_planet: string; natal_planet: string; aspect_type: string; orb: number; text: string; read: boolean }[]>(
+      '/api/alerts' + (unread ? '?unread=true' : ''),
+    ),
+  markAlertRead: (id: string) => jsend<{ id: string; read: boolean }>(`/api/alerts/${id}/read`, { method: 'POST' }),
 }
