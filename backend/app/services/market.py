@@ -25,6 +25,10 @@ import httpx
 
 _SINA = "https://hq.sinajs.cn/list=gb_{sym}"
 _SINA_HEADERS = {"Referer": "https://finance.sina.com.cn/"}
+_SINA_KLINE = (
+    "https://money.finance.sina.com.cn/quotes_service/api/json_v2.php"
+    "/CN_MarketData.getKLineData?symbol={sym}&scale=240&ma=no&datalen={n}"
+)
 _TENCENT = (
     "https://web.ifzq.gtimg.cn/appstock/app/fqkline/get"
     "?_var=kline_dayq&param=us{sym},day,{start},{end},{count},qfq"
@@ -122,5 +126,35 @@ def get_history(
             "high": float(b[3] or 0),
             "low": float(b[4] or 0),
             "volume": int(float(b[5] or 0)),
+        })
+    return out
+
+
+def get_a_share_history(symbol: str, datalen: int = 60) -> list[dict]:
+    """Fetch A-share / index daily bars from Sina (真源, P3-1).
+
+    `symbol` uses Sina prefix: sh/sz + 6 digits (e.g. 'sh600519' 贵州茅台,
+    'sz000001' 平安银行, 'sz399001' 深证成指). Returns most recent `datalen`
+    bars ascending. Empty list on failure.
+    """
+    url = _SINA_KLINE.format(sym=symbol, n=int(datalen))
+    r = _retry_get(url)
+    try:
+        bars = json.loads(r.text)
+    except json.JSONDecodeError:
+        return []
+    if not isinstance(bars, list):
+        return []
+    out: list[dict] = []
+    for b in bars:
+        if not isinstance(b, dict) or "day" not in b:
+            continue
+        out.append({
+            "date": b["day"],
+            "open": float(b.get("open") or 0),
+            "close": float(b.get("close") or 0),
+            "high": float(b.get("high") or 0),
+            "low": float(b.get("low") or 0),
+            "volume": int(float(b.get("volume") or 0)),
         })
     return out
