@@ -138,3 +138,34 @@ class AccuracyOut(BaseModel):
     ticker: str
     windows: dict[str, AccuracyWindow]
     note: str
+
+
+class BacktestBar(BaseModel):
+    date: str
+    score: float
+    predicted_direction: Literal["bull", "bear", "neutral"]
+    actual_pct: float
+    correct: bool | None
+
+
+class DirectionStat(BaseModel):
+    total: int
+    correct: int
+    accuracy: float
+
+
+class WeightRec(BaseModel):
+    issue: str
+    fix: str
+
+
+class BacktestOut(BaseModel):
+    ticker: str
+    days: int
+    data_source: str
+    overall_accuracy: float
+    scored_count: int
+    neutral_count: int
+    by_direction: dict[str, DirectionStat]
+    sample_bars: list[BacktestBar]
+    recommendations: list[WeightRec]
