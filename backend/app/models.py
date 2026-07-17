@@ -71,6 +71,23 @@ class Alert(Base):
     user: Mapped["User"] = relationship(back_populates="alerts")
 
 
+class Interpretation(Base):
+    """LLM interpretation cache — keyed by (topic, ticker, YYYY-MM-DD)."""
+    __tablename__ = "interpretations"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    cache_key: Mapped[str] = mapped_column(String(255), unique=True, index=True)
+    topic: Mapped[str] = mapped_column(String(200))
+    ticker: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    text: Mapped[str] = mapped_column(Text)
+    model: Mapped[str] = mapped_column(String(60))
+    tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    reasoning_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    generated_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc)
+    )
+
+
 class PredictionRecord(Base):
     """Historical prediction for accuracy tracking (P2 populates)."""
     __tablename__ = "predictions"

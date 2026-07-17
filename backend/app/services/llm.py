@@ -1,8 +1,11 @@
-"""LLM interpretation — LongCat-2.0 (OpenAI-compatible endpoint).
+"""LLM interpretation — LongCat-2.0 (OpenAI-compatible endpoint) + DB cache.
 
 Astrologer persona + current celestial JSON → natural-language reading.
 LongCat-2.0 is a reasoning model: output lives in choices[0].message.content
 (after reasoning_content), so we pull from there and give generous max_tokens.
+
+P3-2: results cached in `interpretations` table keyed by (topic, ticker, YYYY-MM-DD)
+so repeated calls within a day don't burn tokens / wait 10-30s.
 """
 from __future__ import annotations
 
@@ -10,8 +13,11 @@ import json
 from datetime import datetime, timezone
 
 import httpx
+from sqlalchemy import select
 
 from app.core.config import settings
+from app.db import SessionLocal
+from app.models import Interpretation
 from app.services import ephem, scoring
 from app.services.sector_map import sector_for, sector_label
 
@@ -56,8 +62,46 @@ def _build_user_prompt(topic: str, ticker: str | None, birth_iso: str | None) ->
     return f"当前天象 JSON:\n{json.dumps(ctx, ensure_ascii=False, indent=2)}\n\n请就「{topic}」给出解读。"
 
 
+def _cache_key(topic: str, ticker: str | None) -> str:
+    """Key by topic + ticker + UTC date so same-day calls reuse the cache."""
+    today = datetime.now(timezone.utc).date().isoformat()
+    return f"{today}|{topic}|{ticker.upper() if ticker else 'none'}"
+
+
+def _read_cache(cache_key: str) -> Interpretation | None:
+    db = SessionLocal()
+    try:
+        return db.scalar(select(Interpretation).where(Interpretation.cache_key == cache_key))
+    finally:
+        db.close()
+
+
+def _write_cache(cache_key: str, topic: str, ticker: str | None, text: str,
+                model: str, tokens: int | None, reasoning_tokens: int | None) -> None:
+    db = SessionLocal()
+    try:
+        db.add(Interpretation(
+            cache_key=cache_key, topic=topic,
+            ticker=ticker.upper() if ticker else None,
+            text=text, model=model, tokens=tokens, reasoning_tokens=reasoning_tokens,
+        ))
+        db.commit()
+    finally:
+        db.close()
+
+
 def interpret(topic: str, ticker: str | None = None, birth_iso: str | None = None) -> dict:
-    """Call LongCat for a natural-language reading. Returns {text, model, tokens}."""
+    """Call LongCat for a reading. Same-day cache hit returns stored text (no LLM call)."""
+    ck = _cache_key(topic, ticker)
+    cached = _read_cache(ck)
+    if cached:
+        return {
+            "text": cached.text, "model": cached.model,
+            "tokens": cached.tokens, "reasoning_tokens": cached.reasoning_tokens,
+            "topic": cached.topic, "ticker": cached.ticker,
+            "generated_at": cached.generated_at.isoformat() if hasattr(cached.generated_at, "isoformat") else str(cached.generated_at),
+            "cached": True,
+        }
     user_prompt = _build_user_prompt(topic, ticker, birth_iso)
     try:
         r = httpx.post(
@@ -79,7 +123,7 @@ def interpret(topic: str, ticker: str | None = None, birth_iso: str | None = Non
         # LongCat-2.0: body lives in choices[0].message.content (post-reasoning)
         text = (d.get("choices", [{}])[0].get("message", {}) or {}).get("content", "") or ""
         usage = d.get("usage", {})
-        return {
+        result = {
             "text": text.strip() or "（模型未返回正文，请稍后重试）",
             "model": d.get("model", settings.llm_model),
             "tokens": usage.get("total_tokens"),
@@ -87,8 +131,13 @@ def interpret(topic: str, ticker: str | None = None, birth_iso: str | None = Non
             "topic": topic,
             "ticker": ticker.upper() if ticker else None,
             "generated_at": datetime.now(timezone.utc).isoformat(),
+            "cached": False,
         }
+        if text.strip():
+            _write_cache(ck, topic, ticker, result["text"], result["model"],
+                        result["tokens"], result["reasoning_tokens"])
+        return result
     except httpx.HTTPError as e:
         return {"text": f"❌ LLM 调用失败: {type(e).__name__}", "model": settings.llm_model,
                 "tokens": None, "topic": topic, "ticker": ticker.upper() if ticker else None,
-                "generated_at": datetime.now(timezone.utc).isoformat()}
+                "generated_at": datetime.now(timezone.utc).isoformat(), "cached": False}

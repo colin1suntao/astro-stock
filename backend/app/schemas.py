@@ -197,3 +197,4 @@ class InterpretOut(BaseModel):
     topic: str
     ticker: str | None = None
     generated_at: str
+    cached: bool = False

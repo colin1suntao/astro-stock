@@ -5,12 +5,15 @@ from fastapi import FastAPI
 from app.api import alerts, astronomy, auth, backtest, heatmap, health, llm, market, natal, portfolio, scoring
 from app.core.config import settings
 from app.db import init_db
+from app.services.scheduler import stop_scheduler, start_scheduler
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):  # noqa: ARG001
     init_db()  # create tables on startup (dev convenience)
+    start_scheduler()
     yield
+    stop_scheduler()
 
 
 app = FastAPI(
