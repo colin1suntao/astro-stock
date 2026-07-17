@@ -79,6 +79,49 @@ alembic revision --autogenerate -m "add xxx table"
 alembic upgrade head
 ```
 
+## 生产部署（P3-3）
+
+### Docker 一键部署（推荐）
+
+```bash
+# 1. 克隆项目
+git clone <your-repo-url> && cd astro-stock
+
+# 2. （可选）编辑 docker-compose.yml 中的环境变量
+#    必改：ASTRO_JWT_SECRET（随机长串）
+#    可选：ASTRO_LLM_API_KEY（如需 AI 解读）
+
+# 3. 一键启动
+docker compose up -d
+
+# 4. 确认服务
+open http://localhost:8000/docs    # 后端 API 文档（Swagger）
+open http://localhost:5173          # 前端
+```
+
+容器启动流程：Postgres（healthcheck）→ 后端（alembic 自动 migration → uvicorn）→ 前端（Vite dev）。
+
+### 生产部署（Vercel + Railway）
+
+| 服务 | 平台 | 配置要点 |
+|------|------|----------|
+| 前端 | Vercel | `frontend/` 为根目录，`build command: pnpm build`，`output: dist/`；`VITE_API_BASE=https://你的后端.railway.app/api` |
+| 后端 | Railway | `backend/` 为根目录，`start command: alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port $PORT` |
+| 数据库 | Railway Postgres | `ASTRO_DB_URL: postgresql+psycopg://user:pass@host:5432/astrostock` |
+| JWT 密钥 | Railway env | `ASTRO_JWT_SECRET: <随机 64 字符>` |
+| LLM Key | Railway env | `ASTRO_LLM_API_KEY: ak-your-key-here` |
+
+### 环境变量速查
+
+```yaml
+# docker-compose.yml environment 参考
+ASTRO_JWT_SECRET: "prod-secret-change-me"     # 必改，建议 openssl rand -hex 32
+ASTRO_LLM_API_KEY: "ak-your-key-here"         # 如无 LLM 可留空，interpret API 返回失败提示
+ASTRO_DB_URL: "postgresql+psycopg://..."       # 容器内自动设为 Postgres
+ASTRO_DEBUG: "false"                           # 生产关 debug
+ASTRO_SCHEDULER_ENABLED: "true"                # 启用定时过运扫描
+```
+
 ## 路线图
 
 详见 [docs/design-doc.md](docs/design-doc.md)。

@@ -23,6 +23,16 @@ services:
       ASTRO_DB_URL: postgresql+psycopg://astro:astro@db:5432/astrostock
       ASTRO_EPHEM_PATH: ./data/swisseph
       ASTRO_YFINANCE_CACHE_DIR: ./data/yfinance_cache
+      # P1-6 JWT
+      ASTRO_JWT_SECRET: "prod-secret-change-me"
+      ASTRO_JWT_EXPIRE_MINUTES: "1440"
+      # P2-1 LLM (LongCat)
+      ASTRO_LLM_BASE_URL: "https://api.longcat.chat/openai/v1/chat/completions"
+      ASTRO_LLM_API_KEY: "ak_2fC5bH7f63pz9Fo2aD5ce3lp57i8j"
+      ASTRO_LLM_MODEL: "LongCat-2.0"
+      ASTRO_LLM_MAX_TOKENS: "1500"
+      # P3-2 scheduler
+      ASTRO_SCHEDULER_ENABLED: "true"
     ports:
       - "8000:8000"
     depends_on:
