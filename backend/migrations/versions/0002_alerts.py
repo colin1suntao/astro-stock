@@ -28,7 +28,7 @@ def upgrade() -> None:
         sa.Column("aspect_type", sa.String(16), nullable=False),
         sa.Column("orb", sa.Float, nullable=False),
         sa.Column("text", sa.Text, nullable=False),
-        sa.Column("read", sa.Boolean, nullable=False, server_default=sa.text("0")),
+        sa.Column("read", sa.Boolean, nullable=False, server_default=sa.text("false")),
         sa.ForeignKeyConstraint(["user_id"], ["users.id"], name="fk_alerts_user"),
     )
     op.create_index("ix_alerts_user_id", "alerts", ["user_id"])
