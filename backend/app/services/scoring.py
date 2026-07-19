@@ -32,19 +32,20 @@ def direction_of(score: float) -> dict:
     return {"direction": "bear", "label": "强烈看跌", "emoji": "🔻", "color": "danger"}
 
 
-# Friendly/detrimental signs per planet (MVP). Triple-valued so each planet
-# has both friendly (+1.0) and detrimental (-0.3) signs; other signs neutral (+0.4).
+# Friendly/detrimental signs per planet (P4-T6: expanded to full 10-planet coverage).
+# Each planet has friendly (+1.0) / detrimental (-0.3) signs; other signs neutral (+0.4).
 # Module-level so heatmap.py can reuse without re-declaring.
 SIGN_FRIENDLINESS: dict[str, tuple[list[str], tuple[str, ...]]] = {
     "sun": (["白羊座", "狮子座", "射手座"], ("天秤座", "水瓶座")),
-    "moon": (["金牛座", "巨蟹座", "双鱼座", "射手座"], ("摩羯座", "天蝎座")),
-    "mercury": (["双子座", "处女座"], ("射手座", "双鱼座")),
-    "venus": (["金牛座", "天秤座", "双鱼座"], ("白羊座", "天蝎座")),
-    "mars": (["白羊座", "天蝎座"], ("金牛座", "天秤座", "巨蟹座")),
-    "jupiter": (["射手座", "双鱼座", "巨蟹座"], ("双子座", "处女座", "摩羯座")),
-    "saturn": (["摩羯座", "水瓶座", "天秤座"], ("白羊座", "巨蟹座", "狮子座")),
-    "uranus": (["白羊座", "水瓶座", "射手座"], ("金牛座", "狮子座", "天蝎座")),
-    "neptune": (["双鱼座", "射手座", "巨蟹座"], ("处女座", "双子座")),
+    "moon": (["金牛座", "巨蟹座", "双鱼座", "射手座"], ("摩羯座", "天蝎座", "双子座")),
+    "mercury": (["双子座", "处女座"], ("射手座", "双鱼座", "狮子座", "金牛座")),
+    "venus": (["金牛座", "天秤座", "双鱼座"], ("白羊座", "天蝎座", "处女座", "摩羯座")),
+    "mars": (["白羊座", "天蝎座", "摩羯座"], ("金牛座", "天秤座", "巨蟹座", "处女座")),
+    "jupiter": (["射手座", "双鱼座", "巨蟹座", "狮子座"], ("双子座", "处女座", "摩羯座", "金牛座")),
+    "saturn": (["摩羯座", "水瓶座", "天秤座", "处女座"], ("白羊座", "巨蟹座", "狮子座", "射手座")),
+    "uranus": (["白羊座", "水瓶座", "射手座", "双子座"], ("金牛座", "狮子座", "天蝎座", "巨蟹座")),
+    "neptune": (["双鱼座", "射手座", "巨蟹座", "天秤座"], ("处女座", "双子座", "白羊座", "摩羯座")),
+    "pluto": (["天蝎座", "白羊座", "射手座", "双鱼座"], ("金牛座", "巨蟹座", "天秤座", "处女座")),
 }
 
 
@@ -170,10 +171,10 @@ def compute_score(
     f_pts, f_br = _personal_score(birth_iso, ticker)
 
     score = (
-        p_pts * 40
-        + a_pts * 30
-        + t_pts * 20
-        + f_pts * 10
+        p_pts * 59.9
+        + a_pts * 4.4
+        + t_pts * 49.4
+        + f_pts * 43.9
     )
     score = round(score, 1)
     direction = direction_of(score)
@@ -185,10 +186,10 @@ def compute_score(
         "direction_label": direction["label"],
         "direction_emoji": direction["emoji"],
         "breakdown": {
-            "planetary": round(p_pts * 40, 1),
-            "aspect": round(a_pts * 30, 1),
-            "transit": round(t_pts * 20, 1),
-            "personal": round(f_pts * 10, 1),
+            "planetary": round(p_pts * 59.9, 1),
+            "aspect": round(a_pts * 4.4, 1),
+            "transit": round(t_pts * 49.4, 1),
+            "personal": round(f_pts * 43.9, 1),
         },
         "breakdown_detail": {
             "planetary": p_br,
@@ -227,20 +228,49 @@ def predict_7day(
     }
 
 
-# --- accuracy tracking (mock, persisted later) ------------------------------
-
-_ACCURACY_MOCK = {
-    "7d": {"correct": 86, "total": 100, "pct": 86.0},
-    "30d": {"correct": 79, "total": 100, "pct": 79.0},
-    "90d": {"correct": 74, "total": 100, "pct": 74.0},
-    "all_time": {"correct": 1284, "total": 1500, "pct": 85.6},
-}
+# --- accuracy tracking (P4-T4: real backtest replaces mock) ----------------
 
 
 def accuracy_for(ticker: str) -> dict:
-    """Return mock historical accuracy — P2 will replace with DB-backed stats."""
+    """Return real rolling accuracy via backtest (P4-T4: deleted mock).
+
+    Falls back to a `not_enough_data` note when real bars < 5.
+    """
+    from app.services import backtest as _bt
+    from app.services.sector_map import A_SHARE_REPS, TICKER_SECTOR
+
+    # Find an A-share representative for this ticker's sector
+    sector = TICKER_SECTOR.get(ticker.upper())
+    a_sym = None
+    if sector and sector in A_SHARE_REPS:
+        a_sym = A_SHARE_REPS[sector]["symbol"]
+    if not a_sym:
+        return {
+            "ticker": ticker.upper(),
+            "windows": {},
+            "note": "no A-share representative for this ticker's sector",
+        }
+
+    # Run real backtest at 7/30/90 day windows
+    windows: dict[str, dict] = {}
+    for label, days in [("7d", 7), ("30d", 30), ("90d", 90)]:
+        try:
+            r = _bt.run_backtest(ticker, days=days, use_mock=False, a_share_symbol=a_sym)
+            scored = r.get("scored_count", 0)
+            if scored < 5:
+                windows[label] = {"correct": 0, "total": scored, "pct": 0.0,
+                                   "note": "insufficient bars (<5)"}
+            else:
+                windows[label] = {
+                    "correct": int(round(r["overall_accuracy"] * scored / 100)),
+                    "total": scored,
+                    "pct": r["overall_accuracy"],
+                }
+        except Exception as e:
+            windows[label] = {"correct": 0, "total": 0, "pct": 0.0,
+                              "note": f"backtest failed: {type(e).__name__}"}
     return {
         "ticker": ticker.upper(),
-        "windows": _ACCURACY_MOCK,
-        "note": "MVP mock — real rolling accuracy tracking in P2",
+        "windows": windows,
+        "note": f"真回测 · A股代表={a_sym} · 评分=真回归权重",
     }

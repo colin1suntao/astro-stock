@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, onUnmounted, computed } from 'vue'
 import { api, type PlanetPosition, type Aspect, type MoonPhase } from '@/api'
 import { useThemeStore } from '@/stores/theme'
 
@@ -106,7 +106,7 @@ async function load() {
     loading.value = false
   }
 }
-onMounted(() => { load(); loadAlerts(); loadDash() })
+onMounted(() => { load(); loadAlerts(); loadDash(); startSkyStream() })
 
 async function loadDash() {
   dashLoading.value = true; dashError.value = ''
@@ -115,6 +115,32 @@ async function loadDash() {
   } catch (e) { dashError.value = (e as Error).message }
   finally { dashLoading.value = false }
 }
+
+// P4-2b: SSE 实时天象推送 — EventSource 订阅 /api/sky/stream
+let skyES: EventSource | null = null
+const skyLive = ref(false)
+
+function startSkyStream() {
+  try {
+    skyES = new EventSource('/api/sky/stream?interval=10')
+    skyES.addEventListener('sky', (ev) => {
+      try {
+        const d = JSON.parse((ev as MessageEvent).data)
+        if (Array.isArray(d.positions) && d.positions.length) {
+          positions.value = d.positions
+          skyLive.value = true
+        }
+        if (Array.isArray(d.aspects)) aspects.value = d.aspects
+        if (d.moon && moon.value) {
+          moon.value = { ...moon.value, name: d.moon.name, illumination_pct: d.moon.illumination_pct }
+        }
+      } catch { /* ignore parse errors */ }
+    })
+    skyES.onerror = () => { skyLive.value = false; skyES?.close() }
+  } catch { /* EventSource unsupported — silently skip */ }
+}
+
+onUnmounted(() => skyES?.close())
 
 async function loadInterpret() {
   interpLoading.value = true; interpError.value = ''
@@ -140,7 +166,7 @@ const zodiacSymbols = ['♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '
 <template>
   <div class="theme-init" :data-theme="theme.current">
     <section>
-      <h1>📊 仪表盘</h1>
+      <h1>📊 仪表盘 <span v-if="skyLive" class="live-badge" title="实时天象推送中">● LIVE</span></h1>
       <!-- 天象快照 -->
       <div v-if="dash" class="sky-summary">
         <span class="sky-icon">🌌</span>
@@ -345,6 +371,10 @@ const zodiacSymbols = ['♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '
 .interp-meta .refresh { background: none; border: none; color: var(--accent); cursor: pointer; font-size: 12px; padding: 0; }
 .interp-trigger { padding: 12px 24px; border: 1px solid var(--accent); border-radius: 8px; background: var(--surface2); color: var(--accent); cursor: pointer; font-size: 14px; }
 .interp-trigger:hover { background: var(--accent); color: #fff; }
+
+/* P4-2b: 实时天象指示 */
+.live-badge { font-size: 12px; color: var(--danger); margin-left: 8px; animation: pulse 2s infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
 
 /* P4-C: 天象→板块→个股 联动 */
 .sky-summary { display: flex; align-items: center; gap: 12px; padding: 12px 16px; margin-bottom: 16px; border: 1px solid var(--accent); border-radius: 8px; background: var(--surface2); }

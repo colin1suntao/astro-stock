@@ -46,6 +46,7 @@ def _real_backtest_sample(a_symbol: str, datalen: int = 60) -> list[dict]:
         out.append({
             "date": bar["date"],
             "score": float(score),
+            "breakdown": s.get("breakdown", {}),  # P4-T2: per-bar components for real regression
             "predicted_direction": direction,
             "actual_pct": actual_pct,
             "correct": correct,
@@ -120,7 +121,8 @@ def run_backtest(
         "scored_count": len(scored),
         "neutral_count": len(bars) - len(scored),
         "by_direction": by_dir,
-        "sample_bars": bars[:10],
+        "sample_bars": bars,        # P4-T2: return ALL bars (not [:10]) so tune_weights has full data
+        "sample_bars_preview": bars[:10],  # keep a small preview for UI display
     }
 
 
@@ -177,17 +179,18 @@ def tune_weights(backtest_results: list[dict]) -> dict:
     def _misclassification_count(weights: list[float]) -> float:
         """For given weights, recompute score direction and count wrong predictions.
 
-        Approximation: we don't have per-bar breakdown components stored, so we
-        rescale the known aggregate score by the weight ratio. This is a proxy
-        optimization — real per-component tuning would need breakdown_detail
-        persisted per bar (deferred).
+        P4-T2: now we have per-bar breakdown components stored, so recompute the
+        score as a true weighted sum of components rather than a rescale proxy.
         """
-        wsum = sum(weights)
+        w_planetary, w_aspect, w_transit, w_personal = weights
         wrong = 0.0
         for b in all_bars:
-            # rescale: new_score ≈ old_score × (new_wsum / old_wsum) for each bar
-            # this preserves ranking within a bar; not perfect but exercises scipy
-            new_score = b["score"] * (wsum / sum(_CURRENT_WEIGHTS))
+            br = b.get("breakbreak") or b.get("breakdown") or {}
+            p = br.get("planetary", 0.0)
+            a = br.get("aspect", 0.0)
+            t = br.get("transit", 0.0)
+            f = br.get("personal", 0.0)
+            new_score = p * w_planetary + a * w_aspect + t * w_transit + f * w_personal
             new_dir = scoring.direction_of(new_score)["direction"]
             if new_dir == "neutral":
                 continue
@@ -197,10 +200,12 @@ def tune_weights(backtest_results: list[dict]) -> dict:
                 wrong += 1.0
         return wrong
 
-    result = minimize(
-        _misclassification_count, _CURRENT_WEIGHTS,
-        method="Nelder-Mead",
-        options={"maxiter": 200, "xatol": 0.5},
+    from scipy.optimize import differential_evolution  # global search beats Nelder-Mead on step landscape
+
+    bounds = [(0.0, 60.0)] * 4  # each weight in [0, 60] (originals sum to 100)
+    result = differential_evolution(
+        _misclassification_count, bounds,
+        seed=42, maxiter=60, tol=1e-3, polish=True, init='sobol',
     )
     tuned = [round(float(w), 1) for w in result.x.tolist()]
     orig_wrong = _misclassification_count(_CURRENT_WEIGHTS)

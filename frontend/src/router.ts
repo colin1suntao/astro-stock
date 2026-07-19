@@ -31,6 +31,11 @@ export const router = createRouter({
       component: () => import('@/pages/HeatmapPage.vue'),
     },
     {
+      path: '/sky-history',
+      name: 'sky-history',
+      component: () => import('@/pages/SkyHistoryPage.vue'),
+    },
+    {
       path: '/portfolio',
       name: 'portfolio',
       component: () => import('@/pages/PortfolioPage.vue'),

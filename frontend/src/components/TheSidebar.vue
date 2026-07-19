@@ -10,6 +10,7 @@ import { RouterLink, RouterView } from 'vue-router'
       <RouterLink to="/birth-chart">🌟 我的星盘</RouterLink>
       <RouterLink to="/market-calendar">📅 市场日历</RouterLink>
       <RouterLink to="/heatmap">🔥 板块热力图</RouterLink>
+      <RouterLink to="/sky-history">📅 天象日历</RouterLink>
       <RouterLink to="/portfolio">💼 投资组合</RouterLink>
       <RouterLink to="/auth">🔐 登录</RouterLink>
       <RouterLink to="/health">🩺 Health</RouterLink>

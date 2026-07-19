@@ -166,4 +166,13 @@ export const api = {
     sky_summary: string
     note: string
   }>('/api/dashboard'),
+  // P4-3: 回看任意日天象
+  skyHistory: (date: string) => jget<{
+    ts: string
+    positions: PlanetPosition[]
+    aspects: Aspect[]
+    moon: { name: string; illumination_pct: number }
+    highlighted_aspects: Aspect[]
+    note: string
+  }>(`/api/sky/history?date=${encodeURIComponent(date)}`),
 }
