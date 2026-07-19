@@ -15,6 +15,9 @@ const interpError = ref('')
 const alerts = ref<Array<{ id: string; text: string; orb: number; aspect_type: string; read: boolean }>>([])
 const loading = ref(true)
 const error = ref('')
+const dash = ref<{ sectors: Array<{ sector_key: string; sector_label: string; ticker: string; name: string; price: number; change_pct: number; astro_score: number; direction: 'bull' | 'bear' | 'neutral'; direction_label: string; direction_emoji: string; linkage: string }>; sky_summary: string; note: string } | null>(null)
+const dashLoading = ref(false)
+const dashError = ref('')
 
 // 行星颜色映射（对齐后端 --planet-* tokens）
 const planetColor: Record<string, string> = {
@@ -103,7 +106,15 @@ async function load() {
     loading.value = false
   }
 }
-onMounted(() => { load(); loadAlerts() })
+onMounted(() => { load(); loadAlerts(); loadDash() })
+
+async function loadDash() {
+  dashLoading.value = true; dashError.value = ''
+  try {
+    dash.value = await api.dashboard()
+  } catch (e) { dashError.value = (e as Error).message }
+  finally { dashLoading.value = false }
+}
 
 async function loadInterpret() {
   interpLoading.value = true; interpError.value = ''
@@ -130,6 +141,40 @@ const zodiacSymbols = ['♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '
   <div class="theme-init" :data-theme="theme.current">
     <section>
       <h1>📊 仪表盘</h1>
+      <!-- 天象快照 -->
+      <div v-if="dash" class="sky-summary">
+        <span class="sky-icon">🌌</span>
+        <span class="sky-text">{{ dash.sky_summary }}</span>
+      </div>
+      <div v-if="dashLoading" class="muted">联动市场加载中…</div>
+      <p v-if="dashError" class="error">❌ 联动拉取失败: {{ dashError }} <button @click="loadDash">重试</button></p>
+
+      <!-- 天象→板块→个股 联动卡 -->
+      <div v-if="dash && !dashLoading" class="card sector-card">
+        <div class="card-title">📉 天象 → 板块 → 个股 联动</div>
+        <p class="muted" style="margin:0 0 12px;font-size:13px">真实时 A 股价 + 当日占星评分 + 行星联动描述</p>
+        <div class="sector-grid">
+          <div v-for="s in dash.sectors" :key="s.sector_key" class="sector-tile" :class="'dir-' + s.direction">
+            <div class="tile-head">
+              <span class="sector-label">{{ s.sector_label }}</span>
+              <span class="dir-badge">{{ s.direction_emoji }} {{ s.direction_label }}</span>
+            </div>
+            <div class="tile-body">
+              <div class="tile-name">{{ s.name }} · {{ s.ticker }}</div>
+              <div class="tile-price">
+                <span class="price">¥{{ s.price.toFixed(2) }}</span>
+                <span class="chg" :class="{ up: s.change_pct > 0, down: s.change_pct < 0 }">
+                  {{ s.change_pct > 0 ? '+' : '' }}{{ s.change_pct }}%
+                </span>
+              </div>
+              <div class="tile-score">占星分: <b>{{ s.astro_score }}</b></div>
+              <div class="tile-linkage">{{ s.linkage }}</div>
+            </div>
+          </div>
+        </div>
+        <p class="note muted">{{ dash.note }}</p>
+      </div>
+
       <!-- 今日过运提醒 -->
       <div v-if="alerts.length" class="alert-bar">
         <span class="alert-icon">🔔 今日过运提醒（{{ alerts.length }}）</span>
@@ -300,4 +345,32 @@ const zodiacSymbols = ['♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '
 .interp-meta .refresh { background: none; border: none; color: var(--accent); cursor: pointer; font-size: 12px; padding: 0; }
 .interp-trigger { padding: 12px 24px; border: 1px solid var(--accent); border-radius: 8px; background: var(--surface2); color: var(--accent); cursor: pointer; font-size: 14px; }
 .interp-trigger:hover { background: var(--accent); color: #fff; }
+
+/* P4-C: 天象→板块→个股 联动 */
+.sky-summary { display: flex; align-items: center; gap: 12px; padding: 12px 16px; margin-bottom: 16px; border: 1px solid var(--accent); border-radius: 8px; background: var(--surface2); }
+.sky-icon { font-size: 20px; }
+.sky-text { color: var(--text); font-size: 14px; line-height: 1.6; }
+.sector-card { grid-column: 1 / -1; }
+.sector-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.sector-tile { padding: 12px 14px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface2); }
+.sector-tile.dir-bull { border-left: 3px solid var(--success); }
+.sector-tile.dir-bear { border-left: 3px solid var(--danger); }
+.sector-tile.dir-neutral { border-left: 3px solid var(--text3); }
+.tile-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.sector-label { font-weight: 600; font-size: 13px; }
+.dir-badge { font-size: 11px; padding: 2px 8px; border-radius: 4px; background: var(--surface); color: var(--text2); }
+.tile-body { display: flex; flex-direction: column; gap: 4px; }
+.tile-name { font-size: 12px; color: var(--text2); }
+.tile-price { display: flex; justify-content: space-between; align-items: baseline; }
+.tile-price .price { font-size: 18px; font-weight: 700; color: var(--text); }
+.tile-price .chg { font-size: 13px; }
+.tile-price .chg.up { color: var(--success); }
+.tile-price .chg.down { color: var(--danger); }
+.tile-score { font-size: 12px; color: var(--text2); }
+.tile-score b { color: var(--text); }
+.tile-linkage { font-size: 12px; color: var(--text3); line-height: 1.5; margin-top: 4px; }
+.note { margin-top: 12px; font-size: 11px; }
+@media (max-width: 768px) {
+  .sector-grid { grid-template-columns: 1fr; }
+}
 </style>

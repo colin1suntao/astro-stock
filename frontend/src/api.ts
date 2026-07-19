@@ -147,4 +147,23 @@ export const api = {
       '/api/alerts' + (unread ? '?unread=true' : ''),
     ),
   markAlertRead: (id: string) => jsend<{ id: string; read: boolean }>(`/api/alerts/${id}/read`, { method: 'POST' }),
+  // dashboard (P4-C: 天象→板块→个股 联动)
+  dashboard: () => jget<{
+    computed_at: string
+    sectors: Array<{
+      sector_key: string
+      sector_label: string
+      ticker: string
+      name: string
+      price: number
+      change_pct: number
+      astro_score: number
+      direction: 'bull' | 'bear' | 'neutral'
+      direction_label: string
+      direction_emoji: string
+      linkage: string
+    }>
+    sky_summary: string
+    note: string
+  }>('/api/dashboard'),
 }

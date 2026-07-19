@@ -198,3 +198,24 @@ class InterpretOut(BaseModel):
     ticker: str | None = None
     generated_at: str
     cached: bool = False
+
+
+class DashboardSectorOut(BaseModel):
+    sector_key: str
+    sector_label: str
+    ticker: str           # human ticker (e.g. 'MOUTAI')
+    name: str             # CN display name (e.g. '贵州茅台')
+    price: float
+    change_pct: float
+    astro_score: float
+    direction: Literal["bull", "bear", "neutral"]
+    direction_label: str
+    direction_emoji: str
+    linkage: str          # e.g. '天王星在金牛座助力科技板块'
+
+
+class DashboardOut(BaseModel):
+    computed_at: str
+    sectors: list[DashboardSectorOut]
+    sky_summary: str      # 1-sentence current sky snapshot
+    note: str             # data source attribution

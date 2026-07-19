@@ -79,6 +79,22 @@ TICKER_SECTOR: dict[str, str] = {
 }
 
 
+# A-share representatives per sector (Sina symbols: sh/sz + 6 digits).
+# Used by /api/dashboard to avoid overseas HTTPS blocking on US tickers (P4-C).
+A_SHARE_REPS: dict[str, dict[str, str]] = {
+    "technology": {"symbol": "sz000063", "ticker": "ZTE", "name": "中兴通讯"},
+    "semiconductor": {"symbol": "sh688981", "ticker": "SMIC", "name": "中芯国际"},
+    "defense": {"symbol": "sh600150", "ticker": "AVIC", "name": "中航沈飞"},
+    "industrial": {"symbol": "sh601857", "ticker": "PETRO", "name": "中国石油"},
+    "consumer": {"symbol": "sh600519", "ticker": "MOUTAI", "name": "贵州茅台"},
+    "finance": {"symbol": "sh601318", "ticker": "PINGAN", "name": "中国平安"},
+    "energy": {"symbol": "sh600028", "ticker": "SINOPEC", "name": "中国石化"},
+    "crypto": {"symbol": "sz002230", "ticker": "LEBOND", "name": "科大讯飞"},
+    "ev": {"symbol": "sz002594", "ticker": "BYD", "name": "比亚迪"},
+    "realestate": {"symbol": "sz000002", "ticker": "VANKE", "name": "万科A"},
+}
+
+
 def sector_for(ticker: str) -> str | None:
     """Return sector_key for a ticker, or None if unknown."""
     return TICKER_SECTOR.get(ticker.upper())

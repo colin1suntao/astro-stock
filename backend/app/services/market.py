@@ -24,6 +24,7 @@ from functools import lru_cache
 import httpx
 
 _SINA = "https://hq.sinajs.cn/list=gb_{sym}"
+_SINA_A = "https://hq.sinajs.cn/list={sym}"  # A-share realtime, GBK
 _SINA_HEADERS = {"Referer": "https://finance.sina.com.cn/"}
 _SINA_KLINE = (
     "https://money.finance.sina.com.cn/quotes_service/api/json_v2.php"
@@ -85,6 +86,56 @@ def get_quote(ticker: str) -> dict:
     r = _retry_get(url, _SINA_HEADERS)
     r.encoding = "gbk"
     return _parse_sina(r.text)
+
+
+def _parse_sina_a(payload: str, symbol: str) -> dict:
+    """Parse one Sina A-share line (hq.sinajs.cn/list=sh600519) into a quote dict.
+
+    A-share payload CSV differs from US:
+      [0] name  [1] open  [2] prev_close  [3] price
+      [4] day_high  [5] day_low  [6] bid1  [7] ask1
+      [8] volume_shares  [9] amount_wan  [30] date  [31] time
+    """
+    m = re.search(r'"([^"]*)"', payload)
+    if not m or not m.group(1):
+        return {}
+    fields = m.group(1).split(",")
+    if len(fields) < 32:
+        return {}
+    name = fields[0]
+    open_v = float(fields[1] or 0)
+    prev_close = float(fields[2] or 0)
+    price = float(fields[3] or 0)
+    change = price - prev_close if prev_close else 0.0
+    change_pct = (change / prev_close * 100) if prev_close else 0.0
+    return {
+        "ticker": symbol.upper(),
+        "name": name,
+        "price": price,
+        "change_pct": round(change_pct, 2),
+        "change": round(change, 2),
+        "prev_close": prev_close,
+        "open": open_v,
+        "day_high": float(fields[4] or 0),
+        "52w_high": 0.0,  # A-share payload lacks 52w; leave 0
+        "52w_low": 0.0,
+        "volume": int(float(fields[8] or 0)),
+        "market_cap": 0.0,
+        "pe": 0.0,
+        "prev_day_close": prev_close,
+        "fetched_at": f"{fields[30]} {fields[31]}" if len(fields) > 31 else "",
+    }
+
+
+def get_a_share_quote(symbol: str) -> dict:
+    """Real-time A-share quote via Sina (真源, P4-C). Empty dict on miss.
+
+    `symbol` uses Sina prefix: sh/sz + 6 digits (e.g. 'sh600519' 贵州茅台).
+    """
+    url = _SINA_A.format(sym=symbol)
+    r = _retry_get(url, _SINA_HEADERS)
+    r.encoding = "gbk"
+    return _parse_sina_a(r.text, symbol)
 
 
 def get_history(
