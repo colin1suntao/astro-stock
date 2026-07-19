@@ -9,13 +9,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 COPY pyproject.toml ./
 RUN pip install --no-cache-dir -e .
 
-# Copy app + migrations
+# Copy app + migrations + entrypoint
 COPY . .
+RUN chmod +x /app/entrypoint.sh
 
-# Run alembic migration on container start (idempotent — safe if already head)
-# Expose 8000 + run uvicorn
+# Expose 8000 + run via entrypoint (wait db → migrate → serve)
 ENV ASTRO_DB_URL=postgresql+psycopg://astro:astro@db:5432/astrostock
 EXPOSE 8000
-
-# migrate then serve — so fresh DB auto-creates tables
-CMD ["sh", "-c", "alembic upgrade head && uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+CMD ["/app/entrypoint.sh"]
