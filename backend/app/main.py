@@ -10,7 +10,15 @@ from app.services.scheduler import stop_scheduler, start_scheduler
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):  # noqa: ARG001
-    init_db()  # create tables on startup (dev convenience)
+    # Only call init_db() when running against Postgres (DATABASE_URL set in
+    # prod). Skip it for local SQLite dev mode so startup doesn't attempt an
+    # eager connection that isn't needed there, and wrap in try/except so a
+    # transient connection issue in prod doesn't crash the whole app.
+    if not settings.db_url.startswith("sqlite"):
+        try:
+            init_db()
+        except Exception:
+            pass
     start_scheduler()
     yield
     stop_scheduler()
