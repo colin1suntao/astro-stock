@@ -211,4 +211,16 @@ export const api = {
     planet_exposure: Record<string, number>
     note: string
   }>('/api/portfolio/attribution'),
+  // P5-2: AI 投资日历
+  skyCalendar: (year: number) => jget<{
+    year: number
+    days: Array<{
+      date: string
+      aspects: Aspect[]
+      mood: string
+      mood_emoji: string
+      intensity: number
+    }>
+    note: string
+  }>(`/api/sky/calendar?year=${year}`),
 }

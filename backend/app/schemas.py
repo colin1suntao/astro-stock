@@ -221,6 +221,20 @@ class DashboardOut(BaseModel):
     note: str             # data source attribution
 
 
+class SkyCalendarDayOut(BaseModel):
+    date: str                  # YYYY-MM-DD
+    aspects: list[Aspect]       # highlighted aspects orb≤2°
+    mood: str                  # one-sentence investor mood from aspects
+    mood_emoji: str
+    intensity: float           # 0-1 normalized aspect intensity for the day
+
+
+class SkyCalendarOut(BaseModel):
+    year: int
+    days: list[SkyCalendarDayOut]
+    note: str
+
+
 class LeaderboardEntryOut(BaseModel):
     rank: int
     user_id: str
