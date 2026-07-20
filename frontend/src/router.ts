@@ -36,6 +36,17 @@ export const router = createRouter({
       component: () => import('@/pages/SkyHistoryPage.vue'),
     },
     {
+      path: '/leaderboard',
+      name: 'leaderboard',
+      component: () => import('@/pages/LeaderboardPage.vue'),
+    },
+    {
+      path: '/share/:token',
+      name: 'share',
+      component: () => import('@/pages/LeaderboardPage.vue'),
+      props: true,
+    },
+    {
       path: '/portfolio',
       name: 'portfolio',
       component: () => import('@/pages/PortfolioPage.vue'),

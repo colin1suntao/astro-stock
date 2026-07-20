@@ -4,7 +4,7 @@ from __future__ import annotations
 import uuid
 from datetime import datetime, timezone
 
-from sqlalchemy import Column, DateTime, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
@@ -85,6 +85,24 @@ class Interpretation(Base):
     reasoning_tokens: Mapped[int | None] = mapped_column(Integer, nullable=True)
     generated_at: Mapped[datetime] = mapped_column(
         DateTime, default=lambda: datetime.now(timezone.utc)
+    )
+
+
+class BacktestBar(Base):
+    """Per-bar backtest snapshot — persisted for analytics/regression (P4-T3)."""
+    __tablename__ = "backtest_bars"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    a_share_symbol: Mapped[str] = mapped_column(String(16), index=True)
+    date: Mapped[str] = mapped_column(String(10), index=True)          # YYYY-MM-DD
+    score: Mapped[float] = mapped_column(Float)
+    predicted_direction: Mapped[str] = mapped_column(String(16))
+    actual_pct: Mapped[float] = mapped_column(Float)
+    correct: Mapped[bool | None] = mapped_column(Boolean, nullable=True)
+    # per-component contributions (JSON-serializable breakdown dict)
+    breakdown_json: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc), index=True
     )
 
 

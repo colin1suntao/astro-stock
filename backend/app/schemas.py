@@ -219,3 +219,44 @@ class DashboardOut(BaseModel):
     sectors: list[DashboardSectorOut]
     sky_summary: str      # 1-sentence current sky snapshot
     note: str             # data source attribution
+
+
+class LeaderboardEntryOut(BaseModel):
+    rank: int
+    user_id: str
+    user_name: str
+    avg_score: float          # mean astro_score across holdings
+    holdings_count: int
+    tickers: list[str]
+    share_token: str          # opaque token for public share link
+
+
+class LeaderboardOut(BaseModel):
+    computed_at: str
+    entries: list[LeaderboardEntryOut]
+    note: str
+
+
+class HoldingAttributionOut(BaseModel):
+    ticker: str
+    shares: int
+    entry_price: float
+    current_price: float       # A-share realtime (0 if source unavailable)
+    pnl: float                 # unrealized P&L in CNY
+    pnl_pct: float             # unrealized P&L %
+    astro_score: float
+    direction: Literal["bull", "bear", "neutral"]
+    direction_label: str
+    direction_emoji: str
+    breakdown: dict            # per-component contribution to score
+    planetary_linkage: str     # human-readable planetary attribution
+
+
+class PortfolioAttributionOut(BaseModel):
+    computed_at: str
+    user_name: str
+    holdings: list[HoldingAttributionOut]
+    total_pnl: float
+    # 风险敞口按行星分布：sum astro_score weighted by pnl across holdings per primary planet
+    planet_exposure: dict[str, float]
+    note: str

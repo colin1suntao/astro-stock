@@ -97,6 +97,7 @@ def run_backtest(
     else:
         bars = _real_backtest_sample(a_share_symbol, days)
         data_source = f"sina:{a_share_symbol}"
+        _persist_bars(a_share_symbol, bars)  # P4-T3: per-bar breakdown DB 持久化
 
     scored = [b for b in bars if b["correct"] is not None]
     correct_n = sum(1 for b in scored if b["correct"])
@@ -148,6 +149,40 @@ def recommend_weight_adjustments(backtest_result: dict) -> list[dict]:
 
 # Current scoring weights: Score = planetary×40 + aspect×30 + transit×20 + personal×10
 _CURRENT_WEIGHTS = [40.0, 30.0, 20.0, 10.0]
+
+
+def _persist_bars(a_share_symbol: str, bars: list[dict]) -> None:
+    """P4-T3: persist per-bar breakdown to DB (BacktestBar table).
+
+    Idempotent: skips bars already stored for (symbol, date) to avoid dup on rerun.
+    """
+    import json
+    from app.db import SessionLocal
+    from app.models import BacktestBar
+    from sqlalchemy import select
+
+    if not bars:
+        return
+    db = SessionLocal()
+    try:
+        existing = set(db.scalars(
+            select(BacktestBar.date).where(BacktestBar.a_share_symbol == a_share_symbol)
+        ).all())
+        for b in bars:
+            if b.get("date") in existing:
+                continue
+            db.add(BacktestBar(
+                a_share_symbol=a_share_symbol,
+                date=b.get("date", ""),
+                score=float(b.get("score", 0.0)),
+                predicted_direction=b.get("predicted_direction", "neutral"),
+                actual_pct=float(b.get("actual_pct", 0.0)),
+                correct=b.get("correct"),
+                breakdown_json=json.dumps(b.get("breakdown", {}), ensure_ascii=False),
+            ))
+        db.commit()
+    finally:
+        db.close()
 
 
 def tune_weights(backtest_results: list[dict]) -> dict:

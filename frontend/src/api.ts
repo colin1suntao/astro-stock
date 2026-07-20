@@ -175,4 +175,40 @@ export const api = {
     highlighted_aspects: Aspect[]
     note: string
   }>(`/api/sky/history?date=${encodeURIComponent(date)}`),
+  // P4-1: 全用户持仓占星分排行
+  leaderboard: (limit?: number) => jget<{
+    computed_at: string
+    entries: Array<{
+      rank: number
+      user_id: string
+      user_name: string
+      avg_score: number
+      holdings_count: number
+      tickers: string[]
+      share_token: string
+    }>
+    note: string
+  }>('/api/leaderboard' + (limit ? `?limit=${limit}` : '')),
+  // P4-6: 持仓盈亏占星归因
+  attribution: () => jsend<{
+    computed_at: string
+    user_name: string
+    holdings: Array<{
+      ticker: string
+      shares: number
+      entry_price: number
+      current_price: number
+      pnl: number
+      pnl_pct: number
+      astro_score: number
+      direction: 'bull' | 'bear' | 'neutral'
+      direction_label: string
+      direction_emoji: string
+      breakdown: { planetary: number; aspect: number; transit: number; personal: number }
+      planetary_linkage: string
+    }>
+    total_pnl: number
+    planet_exposure: Record<string, number>
+    note: string
+  }>('/api/portfolio/attribution'),
 }

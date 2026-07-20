@@ -1,7 +1,7 @@
 """API routes for astro scoring + prediction."""
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from fastapi import APIRouter, HTTPException, Query
 
@@ -12,14 +12,20 @@ router = APIRouter(prefix="/api/stocks", tags=["scoring"])
 
 
 def _validate_birth(birth: str | None) -> str | None:
-    """Return birth unchanged if valid ISO datetime, else raise 422."""
+    """Return birth unchanged if valid ISO datetime, else raise 422.
+
+    P4-T5: explicit tzinfo fallback — naive datetimes treated as UTC by replacing
+    tzinfo on the parsed datetime, so downstream consumers get a tz-aware ISO.
+    """
     if birth is None:
         return birth
     try:
-        datetime.fromisoformat(birth)
+        dt = datetime.fromisoformat(birth)
     except ValueError:
         raise HTTPException(422, "birth must be an ISO 8601 datetime")
-    return birth
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.isoformat()
 
 
 @router.get("/{ticker}/astro-score", response_model=AstroScoreOut)

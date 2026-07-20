@@ -73,13 +73,23 @@ async def dashboard():
     for sector_key, rep in A_SHARE_REPS.items():
         info = SECTOR_PLANET_MAP.get(sector_key, {})
         sector_label = info.get("label", sector_key)
-        # real-time A-share quote (真源, may be empty outside CN trading hours)
+        # realtime quote: try US ticker first (Sina gb_*), fallback A-share rep
+        price = 0.0
+        chg = 0.0
+        us_rep = _us_rep_for_sector(sector_key)
         try:
-            q = market.get_a_share_quote(rep["symbol"])
+            q = market.get_quote(us_rep)
+            price = float(q.get("price") or 0)
+            chg = float(q.get("change_pct") or 0)
         except Exception:
             q = {}
-        price = float(q.get("price") or 0)
-        chg = float(q.get("change_pct") or 0)
+        if not price:  # US source failed → A-share fallback
+            try:
+                q = market.get_a_share_quote(rep["symbol"])
+                price = float(q.get("price") or 0)
+                chg = float(q.get("change_pct") or 0)
+            except Exception:
+                q = {}
         # astro_score for the rep ticker (use US ticker key in TICKER_SECTOR via sector_key)
         # compute_score expects a ticker whose sector_for() returns sector_key;
         # since A-share tickers aren't in TICKER_SECTOR, we pass a synthetic US rep
