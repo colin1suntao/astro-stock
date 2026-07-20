@@ -1,0 +1,53 @@
+name: Backend CI
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/backend.yml'
+  pull_request:
+    branches: [master]
+    paths:
+      - 'backend/**'
+
+env:
+  ASTRO_DEBUG: "true"
+  ASTRO_DB_URL: "sqlite:///./data/astrostock.db"
+  ASTRO_JWT_SECRET: "ci-secret"
+  ASTRO_EPHEM_PATH: "./data/swisseph"
+  ASTRO_YFINANCE_CACHE_DIR: "./data/yfinance_cache"
+  ASTRO_LLM_BASE_URL: "https://api.longcat.chat/openai/v1/chat/completions"
+  ASTRO_LLM_API_KEY: "ci-skip"
+  ASTRO_LLM_MODEL: "LongCat-2.0"
+  ASTRO_SCHEDULER_ENABLED: "false"
+
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -e .
+
+      - name: Lint with ruff
+        run: ruff check .
+
+      - name: Type check with mypy
+        run: mypy app --ignore-missing-imports
+
+      - name: Test with pytest
+        run: pytest -v --tb=short
