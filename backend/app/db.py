@@ -10,7 +10,15 @@ from app.core.config import settings
 
 # SQLite needs check_same_thread=False for FastAPI's thread pool
 _connect_args = {"check_same_thread": False} if settings.db_url.startswith("sqlite") else {}
-engine = create_engine(settings.db_url, connect_args=_connect_args, echo=False)
+
+# Railway's PostgreSQL DATABASE_URL comes as "postgresql://...", which makes
+# SQLAlchemy default to the psycopg2 driver. Only psycopg (v3) is installed,
+# so rewrite the dialect to explicitly select it.
+_db_url = settings.db_url
+if _db_url.startswith("postgresql://"):
+    _db_url = _db_url.replace("postgresql://", "postgresql+psycopg://", 1)
+
+engine = create_engine(_db_url, connect_args=_connect_args, echo=False)
 SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
 
 
