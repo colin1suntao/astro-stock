@@ -34,7 +34,8 @@ app.include_router(heatmap.router)
 app.include_router(llm.router)
 app.include_router(alerts.router)
 app.include_router(dashboard.router, prefix="/api")
-app.include_router(sky.router, prefix="/api")
+app.include_router(sky.router, prefix="/api")         # /api/sky/stream + /api/sky/history
+app.include_router(sky.router, prefix="/ws")          # /ws/sky/ws WebSocket (P5-1)
 app.include_router(leaderboard.router, prefix="/api")
 
 

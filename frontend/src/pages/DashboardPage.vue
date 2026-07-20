@@ -116,31 +116,96 @@ async function loadDash() {
   finally { dashLoading.value = false }
 }
 
-// P4-2b: SSE 实时天象推送 — EventSource 订阅 /api/sky/stream
-let skyES: EventSource | null = null
+// P5-1b: WebSocket 实时天象推送（替 SSE EventSource） — 真双向 + 重连 + 错误处理
+// WS 端点 /ws/sky/ws，client 发 subscribe {interval, planets} 后 server 推 snapshot
+let skyWS: WebSocket | null = null
+let skyReconnectTimer: ReturnType<typeof setTimeout> | null = null
 const skyLive = ref(false)
+const skyStatus = ref<'idle' | 'connecting' | 'live' | 'reconnecting' | 'error'>('idle')
+const skyStatusEmoji = computed(() =>
+  skyStatus.value === 'live' ? '●' :
+  skyStatus.value === 'connecting' ? '◐' :
+  skyStatus.value === 'reconnecting' ? '↻' :
+  skyStatus.value === 'error' ? '✗' : '○')
+const SKY_WS_URL = `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.host}/ws/sky/ws`
+const SKY_RECONNECT_DELAY = 3000  // 3s 重连间隔
 
 function startSkyStream() {
+  connectSkyWS()
+}
+
+function connectSkyWS() {
+  skyStatus.value = 'connecting'
   try {
-    skyES = new EventSource('/api/sky/stream?interval=10')
-    skyES.addEventListener('sky', (ev) => {
-      try {
-        const d = JSON.parse((ev as MessageEvent).data)
+    skyWS = new WebSocket(SKY_WS_URL)
+  } catch {
+    skyStatus.value = 'error'
+    scheduleReconnect()
+    return
+  }
+
+  skyWS.onopen = () => {
+    // 订阅：每 10 秒推一次全行星（classicalPlanets 用于相位轮）
+    skyWS?.send(JSON.stringify({ action: 'subscribe', interval: 10, planets: classicalPlanets }))
+  }
+
+  skyWS.onmessage = (ev) => {
+    try {
+      const msg = JSON.parse(ev.data)
+      if (msg.type === 'snapshot' && msg.data) {
+        const d = msg.data
         if (Array.isArray(d.positions) && d.positions.length) {
           positions.value = d.positions
           skyLive.value = true
+          skyStatus.value = 'live'
         }
         if (Array.isArray(d.aspects)) aspects.value = d.aspects
         if (d.moon && moon.value) {
           moon.value = { ...moon.value, name: d.moon.name, illumination_pct: d.moon.illumination_pct }
         }
-      } catch { /* ignore parse errors */ }
-    })
-    skyES.onerror = () => { skyLive.value = false; skyES?.close() }
-  } catch { /* EventSource unsupported — silently skip */ }
+      } else if (msg.type === 'ack') {
+        // 订阅 ack — 不改 UI
+      } else if (msg.type === 'error') {
+        console.warn('[sky WS] server error:', msg.message)
+      }
+    } catch { /* ignore parse errors */ }
+  }
+
+  skyWS.onclose = () => {
+    skyLive.value = false
+    skyStatus.value = 'reconnecting'
+    scheduleReconnect()
+  }
+
+  skyWS.onerror = () => {
+    skyStatus.value = 'error'
+    skyLive.value = false
+    // onclose 会紧随触发 scheduleReconnect
+  }
 }
 
-onUnmounted(() => skyES?.close())
+function scheduleReconnect() {
+  if (skyReconnectTimer) return
+  skyReconnectTimer = setTimeout(() => {
+    skyReconnectTimer = null
+    if (skyWS && skyWS.readyState === WebSocket.OPEN) return
+    connectSkyWS()
+  }, SKY_RECONNECT_DELAY)
+}
+
+function stopSkyStream() {
+  if (skyReconnectTimer) { clearTimeout(skyReconnectTimer); skyReconnectTimer = null }
+  if (skyWS) {
+    skyWS.onclose = null  // 防止手动关触发重连
+    try { skyWS.send(JSON.stringify({ action: 'unsubscribe' })) } catch { /* ignore */ }
+    skyWS.close()
+    skyWS = null
+  }
+  skyLive.value = false
+  skyStatus.value = 'idle'
+}
+
+onUnmounted(() => stopSkyStream())
 
 async function loadInterpret() {
   interpLoading.value = true; interpError.value = ''
@@ -166,7 +231,7 @@ const zodiacSymbols = ['♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '
 <template>
   <div class="theme-init" :data-theme="theme.current">
     <section>
-      <h1>📊 仪表盘 <span v-if="skyLive" class="live-badge" title="实时天象推送中">● LIVE</span></h1>
+      <h1>📊 仪表盘 <span v-if="skyLive" class="live-badge" :class="skyStatus" :title="`WebSocket ${skyStatus}`">{{ skyStatusEmoji }} LIVE</span></h1>
       <!-- 天象快照 -->
       <div v-if="dash" class="sky-summary">
         <span class="sky-icon">🌌</span>
@@ -372,8 +437,11 @@ const zodiacSymbols = ['♈', '♉', '♊', '♋', '♌', '♍', '♎', '♏', '
 .interp-trigger { padding: 12px 24px; border: 1px solid var(--accent); border-radius: 8px; background: var(--surface2); color: var(--accent); cursor: pointer; font-size: 14px; }
 .interp-trigger:hover { background: var(--accent); color: #fff; }
 
-/* P4-2b: 实时天象指示 */
-.live-badge { font-size: 12px; color: var(--danger); margin-left: 8px; animation: pulse 2s infinite; }
+/* P5-1b: WebSocket 实时天象指示 */
+.live-badge { font-size: 12px; margin-left: 8px; animation: pulse 2s infinite; }
+.live-badge.live { color: var(--danger); }
+.live-badge.connecting, .live-badge.reconnecting { color: var(--warning); }
+.live-badge.error { color: var(--danger); animation: none; }
 @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
 
 /* P4-C: 天象→板块→个股 联动 */
