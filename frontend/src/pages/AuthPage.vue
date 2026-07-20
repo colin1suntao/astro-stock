@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref } from 'vue'
-import { useRouter } from 'vue-router'
+import { useRouter, useRoute } from 'vue-router'
 import { api } from '@/api'
 
 const email = ref('demo@astro.com')
@@ -9,6 +9,7 @@ const name = ref('Demo')
 const mode = ref<'login' | 'register'>('login')
 const error = ref('')
 const router = useRouter()
+const route = useRoute()
 
 async function submit() {
   error.value = ''
@@ -24,7 +25,9 @@ async function submit() {
   const d = await r.json()
   localStorage.setItem('astro-token', d.access_token)
   localStorage.setItem('astro-user', JSON.stringify(d.user))
-  router.push('/portfolio')
+  // P5-4: 登录/注册成功后跳仪表盘；若有 redirect query 优先（守卫拦下时）
+  const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : null
+  router.push(redirect || '/dashboard')
 }
 </script>
 

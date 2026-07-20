@@ -6,39 +6,51 @@ export const router = createRouter({
   routes: [
     {
       path: '/',
+      name: 'auth',
+      component: () => import('@/pages/AuthPage.vue'),
+    },
+    {
+      path: '/dashboard',
       name: 'dashboard',
       component: () => import('@/pages/DashboardPage.vue'),
+      meta: { requiresAuth: true },
     },
     {
       path: '/stock/:ticker',
       name: 'stock-detail',
       component: () => import('@/pages/StockDetailPage.vue'),
       props: true,
+      meta: { requiresAuth: true },
     },
     {
       path: '/birth-chart',
       name: 'birth-chart',
       component: () => import('@/pages/BirthChartPage.vue'),
+      meta: { requiresAuth: true },
     },
     {
       path: '/market-calendar',
       name: 'market-calendar',
       component: () => import('@/pages/MarketCalendarPage.vue'),
+      meta: { requiresAuth: true },
     },
     {
       path: '/heatmap',
       name: 'heatmap',
       component: () => import('@/pages/HeatmapPage.vue'),
+      meta: { requiresAuth: true },
     },
     {
       path: '/sky-history',
       name: 'sky-history',
       component: () => import('@/pages/SkyHistoryPage.vue'),
+      meta: { requiresAuth: true },
     },
     {
       path: '/leaderboard',
       name: 'leaderboard',
       component: () => import('@/pages/LeaderboardPage.vue'),
+      meta: { requiresAuth: true },
     },
     {
       path: '/share/:token',
@@ -54,8 +66,7 @@ export const router = createRouter({
     },
     {
       path: '/auth',
-      name: 'auth',
-      component: () => import('@/pages/AuthPage.vue'),
+      redirect: '/',  // 旧链兼容 → 跳首页
     },
     {
       path: '/health',
