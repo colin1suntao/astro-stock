@@ -118,3 +118,20 @@ class PredictionRecord(Base):
     predicted_confidence: Mapped[float] = mapped_column(Float)
     actual_result: Mapped[str | None] = mapped_column(String(8), nullable=True)  # correct|incorrect|partial
     planetary_snapshot: Mapped[str | None] = mapped_column(Text, nullable=True)  # JSON blob
+
+
+class SkyCalendarCache(Base):
+    """P5-3: 投资日历缓存 — keyed by year, JSON blob + TTL 30 天。
+
+    全年逐日跑 ephem.get_aspects 耗时 ~5s，缓存后同 year 请求 <50ms。
+    """
+    __tablename__ = "sky_calendar_cache"
+
+    id: Mapped[str] = mapped_column(String(32), primary_key=True, default=_uuid)
+    year: Mapped[int] = mapped_column(Integer, unique=True, index=True)
+    payload_json: Mapped[str] = mapped_column(Text)          # SkyCalendarOut dict JSON
+    phase_days: Mapped[int] = mapped_column(Integer)         # len(days) for quick sanity
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime, default=lambda: datetime.now(timezone.utc), index=True
+    )
+    expires_at: Mapped[datetime] = mapped_column(DateTime, index=True)  # TTL 30 天后过期

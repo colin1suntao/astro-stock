@@ -10,15 +10,23 @@ from __future__ import annotations
 
 import asyncio
 import json
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
+from functools import lru_cache
 
-from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, Query, Request, Response, WebSocket, WebSocketDisconnect
+from sqlalchemy import select
 from sse_starlette.sse import EventSourceResponse
 
 from app import schemas
+from app.db import SessionLocal
+from app.models import SkyCalendarCache
 from app.services import ephem
 
 router = APIRouter(prefix="/sky", tags=["sky"])
+
+# P5-3a: 缓存层常量
+_CAL_TTL_DAYS = 30          # 缓存有效期 30 天（年过完即稳，TTL 防星历表微调或 ephem 升级后陈旧）
+_CAL_LRU_MAX = 8            # 进程内 LRU 最多缓存 8 个年（近 10 年用），超则淘汰最旧
 
 
 async def _sky_snapshot(when_iso: str | None = None) -> dict:
@@ -175,19 +183,51 @@ def _day_mood(snapped: list[dict]) -> tuple[str, str, float]:
     return mood, emoji, min(1.0, intensity)
 
 
-@router.get("/calendar", response_model=schemas.SkyCalendarOut)
-async def calendar(
-    year: int = Query(..., ge=1900, le=2100, description="year to scan"),
-):
-    """AI 投资日历 — 扫全年逐日抓 orb≤2° 精确相位日 + 投资 mood + intensity.
+# P5-3a: 进程内 LRU 一层 — 避免热年每请求查 SQLite（~50ms 盘存）
+# typed as dict[int, dict] — 快照直返，跳过 JSON 反序列
+@lru_cache(maxsize=_CAL_LRU_MAX)
+def _calendar_inmem(year: int) -> dict | None:
+    """Return SkyCalendarOut dict if cached & fresh in SQLite, else None."""
+    db = SessionLocal()
+    try:
+        row = db.scalar(select(SkyCalendarCache).where(SkyCalendarCache.year == year))
+        if not row:
+            return None
+        if datetime.now(timezone.utc) > row.expires_at.replace(tzinfo=timezone.utc):
+            return None  # expired → 让 calendar 真算并刷新
+        return json.loads(row.payload_json)
+    finally:
+        db.close()
 
-    替当前相位聚合：给前端一个日历视图，每日显重要相位 + 投资倾向 emoji。
-    全年 365 日逐日跑 ephem.get_aspects（skyfield de421 真算），CPU 密集
-    但单次约 1-3s，前端可缓存。
-    """
-    from datetime import date as _date, timedelta
 
-    days: list[schemas.SkyCalendarDayOut] = []
+def _calendar_persist(year: int, payload: dict, phase_days: int) -> None:
+    """Upsert calendar into SQLite + warm in-mem LRU."""
+    now = datetime.now(timezone.utc)
+    expires = now + timedelta(days=_CAL_TTL_DAYS)
+    db = SessionLocal()
+    try:
+        row = db.scalar(select(SkyCalendarCache).where(SkyCalendarCache.year == year))
+        if row:
+            row.payload_json = json.dumps(payload, ensure_ascii=False)
+            row.phase_days = phase_days
+            row.created_at = now
+            row.expires_at = expires
+        else:
+            db.add(SkyCalendarCache(
+                year=year, payload_json=json.dumps(payload, ensure_ascii=False),
+                phase_days=phase_days, created_at=now, expires_at=expires,
+            ))
+        db.commit()
+    finally:
+        db.close()
+    _calendar_inmem.cache_clear()  # 下一请求重读，避免 stale
+
+
+async def _calendar_compute(year: int) -> dict:
+    """真算全年 — 耗时 ~5s，只在缓存 miss 时跑."""
+    from datetime import date as _date
+
+    days: list[dict] = []
     d = _date(year, 1, 1)
     end = _date(year + 1, 1, 1)
     while d < end:
@@ -196,15 +236,56 @@ async def calendar(
         snapped = [a for a in aspects if float(a.get("orb", 99)) <= 2.0]
         if snapped:  # 只录有精确相位的日（非 365 全录）
             mood, emoji, inten = _day_mood(snapped)
-            days.append(schemas.SkyCalendarDayOut(
-                date=d.isoformat(),
-                aspects=snapped,
-                mood=mood, mood_emoji=emoji, intensity=round(inten, 2),
-            ))
+            days.append({
+                "date": d.isoformat(),
+                "aspects": snapped,
+                "mood": mood, "mood_emoji": emoji, "intensity": round(inten, 2),
+            })
         d += timedelta(days=1)
+    return {
+        "year": year,
+        "days": days,
+        "note": f"天象=skyfield de421.bsp 真算 · 全年逐日扫 orb≤2° 精确相位日 · {len(days)} 个相位日",
+    }
 
-    return schemas.SkyCalendarOut(
-        year=year,
-        days=days,
-        note=f"天象=skyfield de421.bsp 真算 · 全年逐日扫 orb≤2° 精确相位日 · {len(days)} 个相位日",
-    )
+
+# P5-3b: HTTP 响应头 — 浏览器/CDN 层缓存对梡
+_CAL_CC = f"public, max-age={_CAL_TTL_DAYS * 86400}"  # 30 天 immutable（year 内容稳定）
+import hashlib as _hashlib
+
+
+def _calendar_etag(payload: dict) -> str:
+    """Stable Etag from payload hash — client If-None-Match 命中则 304."""
+    h = _hashlib.sha256(json.dumps(payload, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
+    return f'"sky-cal-{h[:16]}"'
+
+
+@router.get("/calendar", response_model=schemas.SkyCalendarOut)
+async def calendar(
+    year: int = Query(..., ge=1900, le=2100, description="year to scan"),
+    req: Request = None,
+    res: Response = None,
+):
+    """AI 投资日历 — 全年重要相位日 + 投资倾向（P5-2）+ SQLite 缓存层（P5-3a）+ HTTP 响应头（P5-3b）.
+
+    缓存三层：进程内 LRU → SQLite 持久（TTL 30 天）→ miss 时真算 ~5s 填入。
+    HTTP 头：Cache-Control public max-age=30d + ETag → 浏览器 If-None-Match 命中返 304。
+    """
+    # LRU 一层
+    cached = _calendar_inmem(year)
+    payload = cached if cached is not None else None
+    if payload is None:
+        # SQLite 二层（_calendar_inmem 已查 SQLite，miss 时返 None → 真算）
+        payload = await _calendar_compute(year)
+        _calendar_persist(year, payload, len(payload["days"]))
+    # P5-3b: 注响应头 + If-None-Match 命中返 304（跳 body）
+    etag = _calendar_etag(payload)
+    res.headers["Cache-Control"] = _CAL_CC
+    res.headers["ETag"] = etag
+    res.headers["Vary"] = "Accept-Encoding"
+    inm = req.headers.get("if-none-match")
+    if inm and inm == etag:
+        res.status_code = 304
+        res.body = b""  # 304 不含 body，显式置空避 response_model 序列化 None 报错
+        return res  # 返 Response 跳过 response_model 序列化
+    return payload

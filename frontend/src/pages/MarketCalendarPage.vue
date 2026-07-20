@@ -38,10 +38,52 @@ const byMonth = computed(() => {
   return months
 })
 
+// P5-3c: localStorage 客户端缓存 + SWR（陈旧期内用缓存否则重取）
+// 陈旧 24h 内直用 localStorage，超则后台静默重取（SWR stale-while-revalidate）
+const SWR_STALE_MS = 24 * 60 * 60 * 1000  // 24h 陈旧期
+const calCacheKey = (y: number) => `sky-cal-${y}`
+type CalPayload = { year: number; days: CalendarDay[]; note: string }
+type CalCacheEntry = { ts: number; payload: CalPayload }
+
+function readCalCache(y: number): CalPayload | null {
+  try {
+    const raw = localStorage.getItem(calCacheKey(y))
+    if (!raw) return null
+    return JSON.parse(raw).payload as CalPayload
+  } catch { return null }
+}
+
+function writeCalCache(y: number, payload: CalPayload) {
+  try {
+    localStorage.setItem(calCacheKey(y), JSON.stringify({ ts: Date.now(), payload }))
+  } catch { /* quota exceeded — silently skip */ }
+}
+
+function calCacheAgeMs(y: number): number {
+  try {
+    const raw = localStorage.getItem(calCacheKey(y))
+    if (!raw) return Infinity
+    return Date.now() - (JSON.parse(raw).ts as number)
+  } catch { return Infinity }
+}
+
 async function loadCalendar() {
   calLoading.value = true; calError.value = ''
+  // P5-3c: 先显 localStorage 陈旧缓存（若 <24h），后台静默重取
+  const cached = readCalCache(year.value)
+  if (cached) {
+    calendar.value = cached
+    selectedDay.value = null
+    if (calCacheAgeMs(year.value) < SWR_STALE_MS) {
+      calLoading.value = false  // 陈旧期内用缓存，不再 loading
+      return  // 跳后台重取
+    }
+  }
+  // miss 或陈旧超 → 真取
   try {
-    calendar.value = await api.skyCalendar(year.value)
+    const payload = await api.skyCalendar(year.value)
+    calendar.value = payload
+    writeCalCache(year.value, payload)
     selectedDay.value = null
   } catch (e) { calError.value = (e as Error).message }
   finally { calLoading.value = false }
