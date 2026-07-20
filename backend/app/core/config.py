@@ -1,7 +1,6 @@
 import os
 from functools import lru_cache
 
-from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -13,18 +12,16 @@ class Settings(BaseSettings):
 
     # Database — SQLite for dev (zero deps), Postgres in prod via env override.
     # Priority: DATABASE_URL (e.g. Railway's Postgres service) > ASTRO_DB_URL > SQLite default.
-    db_url: str = "sqlite:///./data/astrostock.db"
+    db_url: str = os.environ.get("DATABASE_URL") or "sqlite:///./data/astrostock.db"
 
-    @model_validator(mode="before")
-    @classmethod
-    def _prioritize_database_url(cls, data):
+    def __init__(self, **data):
+        # Read DATABASE_URL directly from the environment before pydantic
+        # settings resolution runs, so Railway's Postgres URL always wins
+        # over the ASTRO_DB_URL env var (or the default env parsing) here.
         database_url = os.environ.get("DATABASE_URL")
         if database_url:
-            if isinstance(data, dict):
-                data = {**data, "db_url": database_url}
-            else:
-                data = {"db_url": database_url}
-        return data
+            data["db_url"] = database_url
+        super().__init__(**data)
 
     # JWT
     jwt_secret: str = "dev-secret-change-in-prod"
