@@ -1,0 +1,15 @@
+# Runtime deps for the AstroStock API on Vercel.
+# Trimmed vs pyproject.toml: dropped yfinance/psycopg/alembic/uvicorn — none are
+# imported at runtime (market data uses httpx to Sina/Tencent; SQLite is the dev DB).
+fastapi>=0.115.0
+pydantic>=2.9.0
+pydantic-settings>=2.5.0
+SQLAlchemy>=2.0.35
+skyfield>=1.50.0
+skyfield-data>=4.0.0
+httpx>=0.27.0
+python-dotenv>=1.0.0
+passlib[bcrypt]>=1.7.0
+python-jose[cryptography]>=3.4.0
+APScheduler>=3.10.0
+sse-starlette>=2.1.0

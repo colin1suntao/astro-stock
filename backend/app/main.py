@@ -1,6 +1,8 @@
+import os
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from app.api import alerts, astronomy, auth, backtest, dashboard, heatmap, health, leaderboard, llm, market, natal, portfolio, scoring, sky
 from app.core.config import settings
@@ -19,7 +21,10 @@ async def lifespan(app: FastAPI):  # noqa: ARG001
             init_db()
         except Exception:
             pass
-    start_scheduler()
+    # Vercel serverless has no persistent process / background threads — skip
+    # the APScheduler loop there (VERCEL=1 is set by the platform at runtime).
+    if not os.environ.get("VERCEL"):
+        start_scheduler()
     yield
     stop_scheduler()
 
@@ -28,6 +33,25 @@ app = FastAPI(
     title="AstroStock API",
     version="0.1.0",
     lifespan=lifespan,
+)
+
+# CORS — the frontend is deployed on a separate Vercel project/domain.
+_cors_origins = [
+    o.strip()
+    for o in os.environ.get("ASTRO_CORS_ORIGINS", "").split(",")
+    if o.strip()
+] or [
+    "https://astro-stock-frontend.vercel.app",
+    "https://astro-stock-frontend-tmne.vercel.app",
+    "http://localhost:5173",
+    "http://localhost:3000",
+]
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 app.include_router(health.router, prefix="/api")
