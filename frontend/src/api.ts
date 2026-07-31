@@ -61,9 +61,17 @@ export interface Transit {
   orb: number
 }
 
+// Absolute base for the backend. On Vercel the frontend and backend are separate
+// projects/domains, so we point at the deployed API. Override with VITE_API_BASE
+// (e.g. "" for local dev where Vite proxies /api -> :8000).
+const API_BASE: string =
+  (import.meta.env.VITE_API_BASE as string | undefined)?.replace(/\/$/, '') ||
+  'https://astro-stock-api.vercel.app'
+
 async function jget<T>(url: string): Promise<T> {
-  const r = await fetch(url)
-  if (!r.ok) throw new Error(`${r.status} ${url}`)
+  const full = API_BASE + url
+  const r = await fetch(full)
+  if (!r.ok) throw new Error(`${r.status} ${full}`)
   return r.json() as Promise<T>
 }
 
@@ -94,8 +102,9 @@ export function isLoggedIn(): boolean {
 }
 
 async function jsend<T>(url: string, opts: RequestInit = {}): Promise<T> {
-  const r = await fetch(url, { ...opts, headers: { ...authHeaders(), ...(opts.headers || {}) } })
-  if (!r.ok) throw new Error(`${r.status} ${url}`)
+  const full = API_BASE + url
+  const r = await fetch(full, { ...opts, headers: { ...authHeaders(), ...(opts.headers || {}) } })
+  if (!r.ok) throw new Error(`${r.status} ${full}`)
   return (r.status === 204 ? undefined : r.json()) as Promise<T>
 }
 
