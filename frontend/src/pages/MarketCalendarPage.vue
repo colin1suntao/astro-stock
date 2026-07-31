@@ -30,7 +30,9 @@ const typeLabel: Record<string, string> = {
 // 日历按月分组 — 12 月网格，每月显相位日 chip
 const byMonth = computed(() => {
   if (!calendar.value) return []
-  const months: Array<{ month: number; days: typeof calendar.value extends null ? never : calendar.value['days'] }> = []
+  // 类型位置不能用 `calendar.value['days']` 索引一个运行时变量
+  // （TS 会把它当成命名空间 calendar.value → TS2503）。CalendarDay 就是元素类型，直接用。
+  const months: Array<{ month: number; days: CalendarDay[] }> = []
   for (let m = 0; m < 12; m++) {
     const days = calendar.value.days.filter(d => parseInt(d.date.slice(5, 7)) === m + 1)
     months.push({ month: m + 1, days })

@@ -56,7 +56,7 @@ async function loadInterpret() {
 <template>
   <section>
     <div class="topbar">
-      <h1><span class="subtitle">占星分析 /</span> {{ ticker }}</span></h1>
+      <h1><span class="subtitle">占星分析 /</span> {{ ticker }}</h1>
       <span v-if="quote" class="muted">{{ quote.name }} · ${{ quote.price }} ({{ quote.change_pct }}%)</span>
     </div>
     <p v-if="loading" class="muted">加载中…</p>

@@ -3,15 +3,51 @@
  * 覆盖初始化：vitest + @vue/test-utils + jsdom 框架就位，后续可续扩
  */
 import { describe, it, expect } from 'vitest'
-import { PlanetPosition, Aspect, MoonPhase } from '@/api'
+import * as apiModule from '@/api'
+import type { PlanetPosition, Aspect, MoonPhase } from '@/api'
 
-// 这些是 type-only export，测运行时 import 不应崩
+// PlanetPosition/Aspect/MoonPhase 都是 interface，编译后不产生任何运行时绑定。
+// tsconfig 开了 verbatimModuleSyntax，值导入语法会被原样保留到产物里，
+// 所以它们必须用 `import type` 引入 —— 写成值导入既过不了 tsc（TS1484/TS2693），
+// 运行时也会去找一个根本不存在的具名导出。
 describe('api.ts 类型 export', () => {
-  it('PlanetPosition/Aspect/MoonPhase 是 type-only export，运行时 import undefined 不崩', () => {
-    // type-only export 在运行时是 undefined，但 import 不应抛
-    expect(PlanetPosition).toBeUndefined()
-    expect(Aspect).toBeUndefined()
-    expect(MoonPhase).toBeUndefined()
+  it('PlanetPosition/Aspect/MoonPhase 不出现在运行时模块命名空间里', () => {
+    expect('PlanetPosition' in apiModule).toBe(false)
+    expect('Aspect' in apiModule).toBe(false)
+    expect('MoonPhase' in apiModule).toBe(false)
+  })
+
+  it('运行时导出只有值：api / authHeaders / isLoggedIn', () => {
+    expect(typeof apiModule.api).toBe('object')
+    expect(typeof apiModule.authHeaders).toBe('function')
+    expect(typeof apiModule.isLoggedIn).toBe('function')
+  })
+
+  it('类型可正常用于标注，字面量结构符合定义', () => {
+    const pos: PlanetPosition = {
+      planet: 'Sun',
+      symbol: '☉',
+      sign: '白羊座',
+      sign_symbol: '♈',
+      degree: 12.5,
+      degree_fmt: '12°30′',
+      longitude: 12.5,
+      is_retrograde: false,
+      house: null,
+    }
+    const asp: Aspect = {
+      planet1: 'Sun',
+      planet2: 'Moon',
+      type: 'trine',
+      orb: 2.1,
+      influence: 'positive',
+    }
+    const moon: MoonPhase = { name: '满月', illumination_pct: 99.2, phase_angle: 180 }
+
+    expect(pos.planet).toBe('Sun')
+    expect(pos.house).toBeNull()
+    expect(asp.type).toBe('trine')
+    expect(moon.illumination_pct).toBeCloseTo(99.2)
   })
 })
 
